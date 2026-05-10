@@ -1,6 +1,6 @@
-# Streamlit Trade Journal Starter
+# Streamlit Trade Journal
 
-This is a deployable Streamlit starter version of the trading journal.
+This is a Streamlit conversion of your Flask trade journal project.
 
 ## Run locally
 
@@ -11,22 +11,25 @@ streamlit run streamlit_app.py
 
 ## Deploy to Streamlit Community Cloud
 
-1. Create a GitHub repo.
+1. Create a GitHub repository.
 2. Upload these files.
 3. In Streamlit Cloud, deploy `streamlit_app.py`.
 
-## Important
+## Important database note
 
-This starter uses SQLite by default. Streamlit Cloud storage can reset/rebuild, so for real production use move the database to PostgreSQL/Supabase.
+This starter uses SQLite (`trades_streamlit.db`). That works locally and for demos, but Streamlit Cloud storage can reset. For a real production trading journal, migrate the database to PostgreSQL/Supabase.
 
-## What is included
+## What is converted
 
-- CSV upload/import
-- Duplicate protection
-- Dashboard KPIs
-- Monthly P&L calendar
-- Platform P&L split: IBKR, NinjaTrader, Wealthsimple
-- Trades table with buy/sell price
-- Export CSV
+- CSV upload imports for IBKR, Wealthsimple, NinjaTrader Performance CSV.
+- Duplicate protection.
+- Portfolio selector.
+- Dashboard metrics.
+- Monthly P&L calendar with IBKR / NinjaTrader / Wealthsimple platform totals.
+- Trades table.
+- Monthly analysis.
+- CSV export.
 
-For a full 1:1 migration, upload your latest Flask `app.py`/project zip and merge its custom parsers/routes into this Streamlit shell.
+## Folder automation note
+
+Streamlit Cloud cannot read folders from your local computer. Folder auto-import can only work when running Streamlit locally on the same computer as the export folder. For cloud deployment, use the upload workflow.

@@ -1,25 +1,61 @@
+import calendar
 import hashlib
-import io
+import importlib.util
+import json
 import os
 import sqlite3
-from datetime import datetime, date
+import tempfile
+from datetime import datetime
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
-APP_TITLE = "Trade Journal"
-DB_PATH = Path(os.environ.get("TRADE_JOURNAL_DB", "trade_journal_streamlit.db"))
+APP_DIR = Path(__file__).resolve().parent
+DB_PATH = APP_DIR / "trades_streamlit.db"
+UPLOAD_DIR = APP_DIR / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
 
-st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="📈")
+# Reuse your Flask app's battle-tested broker parsers without running Flask.
+spec = importlib.util.spec_from_file_location("legacy_flask_app", APP_DIR / "legacy_flask_app.py")
+legacy = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(legacy)
+
+st.set_page_config(page_title="Trade Journal", page_icon="📈", layout="wide")
+
+CUSTOM_CSS = """
+<style>
+.block-container { padding-top: 1.2rem; padding-bottom: 3rem; }
+.metric-card {
+    background: linear-gradient(180deg, rgba(18,26,47,.95), rgba(15,21,40,.95));
+    border: 1px solid rgba(148,163,184,.16);
+    border-radius: 18px;
+    padding: 16px;
+    min-height: 96px;
+}
+.metric-label { color: #94a3b8; font-size: 13px; }
+.metric-value { font-size: 28px; font-weight: 900; margin-top: 4px; }
+.pos { color: #22c55e; }
+.neg { color: #ef4444; }
+.muted { color: #94a3b8; font-size: 13px; }
+.calendar-cell {
+    border: 1px solid rgba(148,163,184,.16);
+    border-radius: 12px;
+    padding: 8px;
+    min-height: 92px;
+    overflow: hidden;
+}
+.calendar-day { font-weight: 900; }
+.calendar-pnl { font-weight: 900; font-size: 14px; }
+.small-platform { font-size: 10px; line-height: 1.15; }
+</style>
+"""
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 
-# -----------------------------
-# Database
-# -----------------------------
-def get_conn():
+def connect():
     conn = sqlite3.connect(DB_PATH, timeout=30, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA busy_timeout = 30000")
@@ -29,318 +65,503 @@ def get_conn():
 
 
 def init_db():
-    conn = get_conn()
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS trades (
+    conn = connect()
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            platform TEXT,
-            broker TEXT,
-            symbol TEXT,
-            trade_datetime TEXT,
-            quantity REAL DEFAULT 0,
-            side TEXT,
-            trade_price REAL DEFAULT 0,
-            buy_price REAL DEFAULT 0,
-            sell_price REAL DEFAULT 0,
-            proceeds REAL DEFAULT 0,
-            commission REAL DEFAULT 0,
-            basis REAL DEFAULT 0,
-            realized_pl REAL DEFAULT 0,
-            notes TEXT,
-            import_file TEXT,
-            trade_key TEXT UNIQUE,
+            email TEXT NOT NULL UNIQUE,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
-        """
-    )
-    conn.execute(
-        """
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS portfolios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, name)
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS trades (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            portfolio_id INTEGER NOT NULL,
+            broker TEXT NOT NULL,
+            asset_category TEXT,
+            currency TEXT,
+            symbol TEXT NOT NULL,
+            trade_datetime TEXT,
+            quantity REAL,
+            side TEXT,
+            trade_price REAL,
+            close_price REAL,
+            buy_price REAL,
+            sell_price REAL,
+            proceeds REAL,
+            commission REAL,
+            basis REAL,
+            realized_pl REAL,
+            mtm_pl REAL,
+            risk_amount REAL,
+            r_multiple REAL,
+            code TEXT,
+            import_file TEXT,
+            batch_id TEXT,
+            notes TEXT,
+            trade_key TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS trade_journal (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            trade_id INTEGER NOT NULL UNIQUE,
+            setup_tag TEXT,
+            mistake_tag TEXT,
+            note TEXT,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS imported_files (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            file_hash TEXT UNIQUE,
+            user_id INTEGER NOT NULL,
+            source TEXT NOT NULL,
             file_name TEXT,
+            file_hash TEXT NOT NULL,
+            batch_id TEXT,
+            parsed_count INTEGER DEFAULT 0,
             inserted_count INTEGER DEFAULT 0,
             skipped_count INTEGER DEFAULT 0,
-            imported_at TEXT DEFAULT CURRENT_TIMESTAMP
+            status TEXT,
+            imported_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, source, file_hash)
         )
-        """
-    )
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_trade_scope ON trades(user_id, portfolio_id)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_trade_key ON trades(user_id, portfolio_id, trade_key)")
     conn.commit()
     conn.close()
 
 
-# -----------------------------
-# Helpers
-# -----------------------------
-def to_float(value, default=0.0):
-    if value is None or (isinstance(value, float) and np.isnan(value)):
-        return default
-    text = str(value).replace("$", "").replace(",", "").replace("(", "-").replace(")", "").strip()
-    if text == "":
-        return default
+def get_or_create_user(email="streamlit@local"):
+    conn = connect()
+    row = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+    if row:
+        uid = row["id"]
+    else:
+        cur = conn.execute("INSERT INTO users(email) VALUES (?)", (email,))
+        uid = cur.lastrowid
+        conn.commit()
+    conn.close()
+    return uid
+
+
+def get_portfolios(user_id):
+    conn = connect()
+    rows = conn.execute("SELECT id, name FROM portfolios WHERE user_id = ? ORDER BY name", (user_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_or_create_portfolio(user_id, name="Main Portfolio"):
+    conn = connect()
+    row = conn.execute("SELECT id FROM portfolios WHERE user_id = ? AND name = ?", (user_id, name)).fetchone()
+    if row:
+        pid = row["id"]
+    else:
+        cur = conn.execute("INSERT OR IGNORE INTO portfolios(user_id, name) VALUES (?, ?)", (user_id, name))
+        conn.commit()
+        row = conn.execute("SELECT id FROM portfolios WHERE user_id = ? AND name = ?", (user_id, name)).fetchone()
+        pid = row["id"]
+    conn.close()
+    return pid
+
+
+def file_hash(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def to_float(v, default=0.0):
     try:
-        return float(text)
-    except ValueError:
+        if v is None or str(v).strip() == "":
+            return default
+        return float(v)
+    except Exception:
         return default
 
 
-def clean_col(name):
-    return str(name or "").strip().lower().replace(" ", "_").replace("-", "_")
+def normalize_key_value(value, places=8):
+    if value is None:
+        return ""
+    text = str(value).strip()
+    if text == "":
+        return ""
+    try:
+        return f"{float(text):.{places}f}"
+    except Exception:
+        return text.upper()
 
 
-def first(row, candidates, default=""):
-    for c in candidates:
-        if c in row and pd.notna(row[c]) and str(row[c]).strip() != "":
-            return row[c]
-    return default
-
-
-def parse_date(value):
-    if value is None or str(value).strip() == "":
-        return None
-    dt = pd.to_datetime(value, errors="coerce")
-    if pd.isna(dt):
-        return None
-    return dt.to_pydatetime().replace(tzinfo=None).isoformat(sep=" ", timespec="seconds")
-
-
-def detect_platform(df):
-    cols = {clean_col(c) for c in df.columns}
-    joined = " ".join(sorted(cols))
-    if "wealthsimple" in joined or {"account", "activity_type", "symbol"}.issubset(cols):
-        return "Wealthsimple"
-    if "ninjatrader" in joined or {"entry_price", "exit_price"}.issubset(cols) or {"instrument", "profit"}.issubset(cols):
-        return "NinjaTrader"
-    if "ibkr" in joined or "ib_exec_id" in joined or "fifo_pnl_realized" in joined:
-        return "IBKR"
-    return "Unknown"
-
-
-def derive_side(qty, raw_side=""):
-    side = str(raw_side or "").upper()
-    if side in {"BUY", "BOT", "B", "BOUGHT"}:
-        return "BUY"
-    if side in {"SELL", "SLD", "S", "SOLD"}:
-        return "SELL"
-    return "BUY" if qty >= 0 else "SELL"
-
-
-def make_trade_key(t):
+def make_trade_key(user_id, portfolio_id, trade):
+    if hasattr(legacy, "make_trade_key"):
+        try:
+            return legacy.make_trade_key(user_id, portfolio_id, trade)
+        except Exception:
+            pass
     parts = [
-        t.get("platform", ""), t.get("broker", ""), t.get("symbol", ""),
-        t.get("trade_datetime", ""), str(round(float(t.get("quantity") or 0), 8)),
-        t.get("side", ""), str(round(float(t.get("buy_price") or 0), 8)),
-        str(round(float(t.get("sell_price") or 0), 8)),
-        str(round(float(t.get("realized_pl") or 0), 8)),
+        str(user_id), str(portfolio_id),
+        str(trade.get("broker") or "").upper().strip(),
+        str(trade.get("symbol") or "").upper().strip(),
+        str(trade.get("trade_datetime") or "").strip(),
+        normalize_key_value(trade.get("quantity")),
+        str(trade.get("side") or "").upper().strip(),
+        normalize_key_value(trade.get("trade_price")),
+        normalize_key_value(trade.get("proceeds")),
+        normalize_key_value(trade.get("commission")),
+        str(trade.get("code") or "").upper().strip(),
     ]
     return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
 
 
-def parse_trade_csv(uploaded_file):
-    raw = uploaded_file.getvalue()
-    file_hash = hashlib.sha256(raw).hexdigest()
-    df = pd.read_csv(io.BytesIO(raw))
-    df.columns = [clean_col(c) for c in df.columns]
-    platform = detect_platform(df)
-    trades = []
-
-    for _, row in df.iterrows():
-        r = row.to_dict()
-        symbol = str(first(r, ["symbol", "ticker", "instrument", "underlying", "description"], "")).strip()
-        if not symbol:
-            continue
-
-        dt = parse_date(first(r, [
-            "trade_date", "fill_date", "execution_date", "executed_at", "transaction_date",
-            "date", "datetime", "time", "entry_time"
-        ]))
-
-        qty = to_float(first(r, ["quantity", "qty", "shares", "contracts"], 0))
-        side = derive_side(qty, first(r, ["side", "buy_sell", "action", "type"], ""))
-
-        buy_price = to_float(first(r, ["buy_price", "buyprice", "entry_price", "entryprice"], 0))
-        sell_price = to_float(first(r, ["sell_price", "sellprice", "exit_price", "exitprice", "close_price"], 0))
-        trade_price = to_float(first(r, ["trade_price", "price", "avg_price", "average_price"], 0))
-
-        if buy_price == 0 and sell_price == 0 and trade_price:
-            if side == "BUY":
-                buy_price = trade_price
-            else:
-                sell_price = trade_price
-
-        realized_pl = to_float(first(r, [
-            "realized_pl", "realized_p_l", "p_l", "pl", "profit", "profit_loss",
-            "fifo_pnl_realized", "net_p_l", "net_pl"
-        ], 0))
-        proceeds = to_float(first(r, ["proceeds", "amount", "net_amount", "net_cash", "cash"], 0))
-        commission = to_float(first(r, ["commission", "fees", "ib_commission"], 0))
-        basis = to_float(first(r, ["basis", "cost_basis", "cost"], 0))
-
-        broker = str(first(r, ["broker", "source"], platform)).strip() or platform
-        t = {
-            "platform": platform,
-            "broker": broker,
-            "symbol": symbol,
-            "trade_datetime": dt,
-            "quantity": qty,
-            "side": side,
-            "trade_price": trade_price,
-            "buy_price": buy_price,
-            "sell_price": sell_price,
-            "proceeds": proceeds,
-            "commission": commission,
-            "basis": basis,
-            "realized_pl": realized_pl,
-            "notes": "Imported from CSV",
-            "import_file": uploaded_file.name,
-        }
-        t["trade_key"] = make_trade_key(t)
-        trades.append(t)
-
-    return file_hash, platform, trades
+def derive_buy_sell_prices(trade):
+    if hasattr(legacy, "derive_buy_sell_prices"):
+        try:
+            return legacy.derive_buy_sell_prices(trade)
+        except Exception:
+            pass
+    buy = to_float(trade.get("buy_price"))
+    sell = to_float(trade.get("sell_price"))
+    if buy or sell:
+        return buy, sell
+    side = str(trade.get("side") or "").upper()
+    qty = to_float(trade.get("quantity"))
+    trade_price = to_float(trade.get("trade_price"))
+    close_price = to_float(trade.get("close_price"))
+    if side == "BUY" or qty > 0:
+        return trade_price, close_price
+    if side == "SELL" or qty < 0:
+        return close_price, trade_price
+    return 0.0, 0.0
 
 
-def insert_trades(trades, file_hash, file_name):
-    conn = get_conn()
-    existing_file = conn.execute("SELECT id FROM imported_files WHERE file_hash = ?", (file_hash,)).fetchone()
+def parse_uploaded_file(path):
+    import_type = legacy.detect_import_type(str(path))
+    if import_type in {"ibkr", "ibkr_trades"}:
+        return import_type, legacy.parse_ibkr_activity_csv(str(path))
+    if import_type == "ibkr_summary":
+        return import_type, legacy.parse_ibkr_summary_csv(str(path))
+    if import_type == "wealthsimple":
+        return import_type, legacy.parse_wealthsimple_csv(str(path))
+    if import_type == "performance":
+        return import_type, legacy.parse_performance_csv(str(path))
+    raise ValueError(f"Unsupported or unrecognized CSV format: {import_type}")
+
+
+def insert_trades(user_id, portfolio_id, trades, import_file=None, batch_id=None):
+    conn = connect()
+    cur = conn.cursor()
     inserted = 0
     skipped = 0
+    seen = set()
     for t in trades:
-        try:
-            conn.execute(
-                """
-                INSERT INTO trades (
-                    platform, broker, symbol, trade_datetime, quantity, side, trade_price,
-                    buy_price, sell_price, proceeds, commission, basis, realized_pl, notes,
-                    import_file, trade_key
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    t["platform"], t["broker"], t["symbol"], t["trade_datetime"], t["quantity"],
-                    t["side"], t["trade_price"], t["buy_price"], t["sell_price"], t["proceeds"],
-                    t["commission"], t["basis"], t["realized_pl"], t["notes"], t["import_file"],
-                    t["trade_key"],
-                ),
-            )
-            inserted += 1
-        except sqlite3.IntegrityError:
+        t = dict(t)
+        t.setdefault("broker", "Unknown")
+        t.setdefault("asset_category", "")
+        t.setdefault("currency", "")
+        t.setdefault("symbol", "Unknown")
+        t.setdefault("trade_datetime", None)
+        t.setdefault("quantity", 0)
+        t.setdefault("side", "")
+        t.setdefault("trade_price", 0)
+        t.setdefault("close_price", 0)
+        t.setdefault("proceeds", 0)
+        t.setdefault("commission", 0)
+        t.setdefault("basis", 0)
+        t.setdefault("realized_pl", 0)
+        t.setdefault("mtm_pl", 0)
+        t.setdefault("risk_amount", 0)
+        t.setdefault("r_multiple", 0)
+        t.setdefault("code", "")
+        t.setdefault("notes", "")
+        buy_price, sell_price = derive_buy_sell_prices(t)
+        t["buy_price"] = buy_price
+        t["sell_price"] = sell_price
+        key = make_trade_key(user_id, portfolio_id, t)
+        if key in seen:
             skipped += 1
-    conn.execute(
-        "INSERT OR IGNORE INTO imported_files (file_hash, file_name, inserted_count, skipped_count) VALUES (?, ?, ?, ?)",
-        (file_hash, file_name, inserted, skipped),
-    )
+            continue
+        seen.add(key)
+        existing = cur.execute(
+            "SELECT id FROM trades WHERE user_id=? AND portfolio_id=? AND trade_key=? LIMIT 1",
+            (user_id, portfolio_id, key),
+        ).fetchone()
+        if existing:
+            skipped += 1
+            continue
+        cur.execute("""
+            INSERT INTO trades (
+                user_id, portfolio_id, broker, asset_category, currency, symbol,
+                trade_datetime, quantity, side, trade_price, close_price, buy_price, sell_price,
+                proceeds, commission, basis, realized_pl, mtm_pl, risk_amount, r_multiple,
+                code, import_file, batch_id, notes, trade_key
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            user_id, portfolio_id, t["broker"], t["asset_category"], t["currency"], t["symbol"],
+            t["trade_datetime"], to_float(t["quantity"]), t["side"], to_float(t["trade_price"]),
+            to_float(t["close_price"]), to_float(t["buy_price"]), to_float(t["sell_price"]),
+            to_float(t["proceeds"]), to_float(t["commission"]), to_float(t["basis"]),
+            to_float(t["realized_pl"]), to_float(t["mtm_pl"]), to_float(t["risk_amount"]),
+            to_float(t["r_multiple"]), t["code"], import_file, batch_id, t["notes"], key,
+        ))
+        inserted += 1
     conn.commit()
     conn.close()
-    return inserted, skipped, bool(existing_file)
+    return inserted, skipped
 
 
-def load_trades():
-    conn = get_conn()
-    df = pd.read_sql_query("SELECT * FROM trades ORDER BY COALESCE(trade_datetime, created_at) DESC, id DESC", conn)
+def load_trades_df(user_id, portfolio_id):
+    conn = connect()
+    df = pd.read_sql_query("""
+        SELECT t.*, j.setup_tag, j.mistake_tag, j.note AS journal_note
+        FROM trades t
+        LEFT JOIN trade_journal j ON j.trade_id = t.id
+        WHERE t.user_id = ? AND t.portfolio_id = ?
+        ORDER BY COALESCE(t.trade_datetime, '') DESC, t.id DESC
+    """, conn, params=(user_id, portfolio_id))
     conn.close()
+    if not df.empty:
+        df["date"] = pd.to_datetime(df["trade_datetime"], errors="coerce").dt.date
+        df["month"] = pd.to_datetime(df["trade_datetime"], errors="coerce").dt.to_period("M").astype(str)
     return df
 
 
-def monthly_platform_calendar(df):
-    if df.empty or "trade_datetime" not in df:
-        return pd.DataFrame()
-    x = df.copy()
-    x["date"] = pd.to_datetime(x["trade_datetime"], errors="coerce").dt.date
-    x = x.dropna(subset=["date"])
-    if x.empty:
-        return pd.DataFrame()
-    x["month"] = pd.to_datetime(x["date"]).dt.to_period("M").astype(str)
-    return x.groupby(["month", "platform"], as_index=False).agg(realized_pl=("realized_pl", "sum"), trades=("id", "count"))
+def broker_platform_name(broker):
+    b = str(broker or "").lower()
+    if "wealthsimple" in b:
+        return "Wealthsimple"
+    if "ninja" in b or "performance" in b:
+        return "NinjaTrader"
+    if "ibkr" in b or "interactive" in b:
+        return "IBKR"
+    return "Other"
 
 
-# -----------------------------
-# UI
-# -----------------------------
-init_db()
+def render_metric(label, value, klass=""):
+    st.markdown(
+        f'<div class="metric-card"><div class="metric-label">{label}</div><div class="metric-value {klass}">{value}</div></div>',
+        unsafe_allow_html=True,
+    )
 
-st.markdown(
-    """
-    <style>
-    .block-container { padding-top: 1.5rem; }
-    [data-testid="stMetricValue"] { font-size: 1.6rem; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
 
-st.title("📈 Trade Journal — Streamlit")
-st.caption("Deployable starter version. Upload your latest Flask app/project for a full 1:1 migration.")
+def money(x):
+    x = to_float(x)
+    sign = "+" if x > 0 else "" 
+    return f"{sign}{x:,.2f}"
 
-with st.sidebar:
-    st.header("Navigation")
-    page = st.radio("Page", ["Dashboard", "Import CSV", "Trades", "Export"], label_visibility="collapsed")
-    st.divider()
-    st.info("SQLite is okay for local testing. Use PostgreSQL/Supabase for production deployment.")
 
-trades_df = load_trades()
+def generate_tomorrow_plan(df):
+    if df.empty:
+        return {"mode": "Collect data", "best_setup": "No data", "avoid_setup": "No data", "best_time": "No data", "confidence": 0, "reason": "Import trades first."}
+    work = df.copy()
+    work["setup"] = work.get("setup_tag", pd.Series([None] * len(work))).fillna("Unlabeled")
+    work["pnl"] = pd.to_numeric(work["realized_pl"], errors="coerce").fillna(0)
+    setup = work.groupby("setup")["pnl"].agg(["sum", "count"]).sort_values("sum", ascending=False)
+    best = setup.index[0] if len(setup) else "No data"
+    worst = setup.index[-1] if len(setup) else "No data"
+    work["dt"] = pd.to_datetime(work["trade_datetime"], errors="coerce")
+    work["bucket"] = work["dt"].dt.hour.map(lambda h: "Morning" if pd.notna(h) and h < 11 else "Midday" if pd.notna(h) and h < 14 else "Afternoon" if pd.notna(h) else "Unknown")
+    time_edge = work.groupby("bucket")["pnl"].sum().sort_values(ascending=False)
+    best_time = time_edge.index[0] if len(time_edge) else "No data"
+    recent = work.head(10)["pnl"].sum()
+    confidence = min(95, int(abs(recent) / 50) + min(40, int(setup.iloc[0]["count"] * 5)) if len(setup) else 0)
+    return {"mode": "Selective", "best_setup": best, "avoid_setup": worst, "best_time": best_time, "confidence": confidence, "reason": f"{best} has the strongest recent/overall P&L in your journal."}
 
-if page == "Import CSV":
-    st.header("📤 Import Trade CSV")
-    uploaded = st.file_uploader("Upload IBKR / NinjaTrader / Wealthsimple CSV", type=["csv"])
-    if uploaded:
-        try:
-            file_hash, platform, trades = parse_trade_csv(uploaded)
-            st.write(f"Detected platform: **{platform}**")
-            st.write(f"Parsed rows: **{len(trades)}**")
-            if st.button("Import trades", type="primary"):
-                inserted, skipped, seen_before = insert_trades(trades, file_hash, uploaded.name)
-                st.success(f"Inserted {inserted}, skipped {skipped}.")
-                if seen_before:
-                    st.warning("This file hash was imported before; duplicate trade protection was applied.")
-                st.rerun()
-            if trades:
-                st.dataframe(pd.DataFrame(trades), use_container_width=True)
-        except Exception as e:
-            st.error(str(e))
 
-elif page == "Trades":
-    st.header("📋 Trades")
-    if trades_df.empty:
-        st.info("No trades yet.")
-    else:
-        show_cols = [c for c in ["platform", "broker", "symbol", "trade_datetime", "quantity", "side", "buy_price", "sell_price", "realized_pl", "notes"] if c in trades_df]
-        st.dataframe(trades_df[show_cols], use_container_width=True, hide_index=True)
+def render_monthly_calendar(df):
+    st.subheader("📅 Monthly P&L Calendar")
+    if df.empty or "date" not in df:
+        st.info("No dated trades yet.")
+        return
+    dated = df.dropna(subset=["date"]).copy()
+    if dated.empty:
+        st.info("No trades with valid trade dates yet.")
+        return
+    dated["date"] = pd.to_datetime(dated["date"])
+    dated["platform"] = dated["broker"].map(broker_platform_name)
+    months = sorted(dated["date"].dt.to_period("M").astype(str).unique(), reverse=True)
+    selected = st.selectbox("Calendar month", months, index=0)
+    month_df = dated[dated["date"].dt.to_period("M").astype(str) == selected]
+    total = month_df["realized_pl"].sum()
+    wins = month_df.groupby(month_df["date"].dt.date)["realized_pl"].sum()
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Monthly Total P&L", money(total))
+    c2.metric("Winning-Day P&L", money(wins[wins > 0].sum()))
+    c3.metric("Losing-Day P&L", money(wins[wins < 0].sum()))
+    c4.metric("Trades This Month", int(len(month_df)))
+    p1, p2, p3 = st.columns(3)
+    platform = month_df.groupby("platform").agg(pnl=("realized_pl", "sum"), trades=("id", "count"))
+    for col, name in zip([p1, p2, p3], ["IBKR", "NinjaTrader", "Wealthsimple"]):
+        pnl = platform.loc[name, "pnl"] if name in platform.index else 0
+        trades = platform.loc[name, "trades"] if name in platform.index else 0
+        col.metric(f"{name} Monthly P&L", money(pnl), f"{int(trades)} trades")
 
-elif page == "Export":
-    st.header("⬇️ Export")
-    if trades_df.empty:
-        st.info("No trades to export.")
-    else:
-        csv = trades_df.to_csv(index=False).encode("utf-8")
-        st.download_button("Download trades CSV", csv, "trades_export.csv", "text/csv")
+    year, mon = map(int, selected.split("-"))
+    cal = calendar.Calendar(firstweekday=0)
+    daily = month_df.groupby(month_df["date"].dt.date).agg(pnl=("realized_pl", "sum"), trades=("id", "count"))
+    daily_platform = month_df.groupby([month_df["date"].dt.date, "platform"])["realized_pl"].sum()
+    st.caption("Calendar uses trade date, not settlement date.")
+    cols = st.columns(7)
+    for col, name in zip(cols, ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]):
+        col.markdown(f"**{name}**")
+    for week in cal.monthdatescalendar(year, mon):
+        cols = st.columns(7)
+        for col, day in zip(cols, week):
+            if day.month != mon:
+                col.markdown('<div class="calendar-cell" style="opacity:.25"></div>', unsafe_allow_html=True)
+                continue
+            pnl = daily.loc[day, "pnl"] if day in daily.index else 0
+            trades = daily.loc[day, "trades"] if day in daily.index else 0
+            bg = "rgba(34,197,94,.22)" if pnl > 0 else "rgba(239,68,68,.22)" if pnl < 0 else "rgba(148,163,184,.08)"
+            platforms = []
+            for name, short in [("IBKR", "IBKR"), ("NinjaTrader", "NT"), ("Wealthsimple", "WS")]:
+                try:
+                    val = daily_platform.loc[(day, name)]
+                    if val:
+                        platforms.append(f"<div class='small-platform'>{short}: {money(val)}</div>")
+                except KeyError:
+                    pass
+            col.markdown(
+                f"""
+                <div class="calendar-cell" style="background:{bg}">
+                  <div class="calendar-day">{day.day}</div>
+                  <div class="muted">{int(trades)} trades</div>
+                  <div class="calendar-pnl {'pos' if pnl > 0 else 'neg' if pnl < 0 else ''}">{money(pnl) if trades else '—'}</div>
+                  {''.join(platforms)}
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
-else:
-    st.header("Dashboard")
-    if trades_df.empty:
-        st.info("Upload CSV files to start building your dashboard.")
-    else:
-        total_pnl = float(trades_df["realized_pl"].fillna(0).sum())
-        trade_count = int(len(trades_df))
-        wins = trades_df[trades_df["realized_pl"].fillna(0) > 0]
-        win_rate = (len(wins) / trade_count * 100) if trade_count else 0
 
+def main():
+    init_db()
+    st.sidebar.title("Trade Journal")
+    user_email = st.sidebar.text_input("User email", value=st.session_state.get("email", "streamlit@local"))
+    st.session_state["email"] = user_email
+    user_id = get_or_create_user(user_email)
+    portfolios = get_portfolios(user_id)
+    if not portfolios:
+        get_or_create_portfolio(user_id)
+        portfolios = get_portfolios(user_id)
+    names = [p["name"] for p in portfolios]
+    selected_name = st.sidebar.selectbox("Current portfolio", names)
+    portfolio_id = next(p["id"] for p in portfolios if p["name"] == selected_name)
+    new_portfolio = st.sidebar.text_input("Create portfolio")
+    if st.sidebar.button("Add portfolio") and new_portfolio.strip():
+        get_or_create_portfolio(user_id, new_portfolio.strip())
+        st.rerun()
+    st.sidebar.caption(f"Portfolio: {selected_name}")
+    page = st.sidebar.radio("Page", ["Dashboard", "Import", "Trades", "Monthly", "Export", "Folder import notes"])
+    df = load_trades_df(user_id, portfolio_id)
+
+    if page == "Dashboard":
+        st.title("📈 Trade Journal Dashboard")
+        st.caption(f"Current portfolio: {selected_name}")
+        pnl = df["realized_pl"].sum() if not df.empty else 0
+        wins = (df["realized_pl"] > 0).sum() if not df.empty else 0
+        trade_count = len(df)
+        win_rate = (wins / trade_count * 100) if trade_count else 0
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Total P&L", f"{total_pnl:,.2f}")
-        c2.metric("Trades", f"{trade_count}")
+        c1.metric("Trades", trade_count)
+        c2.metric("Realized P&L", money(pnl))
         c3.metric("Win Rate", f"{win_rate:.1f}%")
-        c4.metric("Platforms", trades_df["platform"].nunique())
+        c4.metric("Platforms", df["broker"].nunique() if not df.empty else 0)
+        render_monthly_calendar(df)
+        st.subheader("📅 Tomorrow Trading Plan")
+        plan = generate_tomorrow_plan(df)
+        p1, p2, p3, p4 = st.columns(4)
+        p1.metric("Mode", plan["mode"])
+        p2.metric("Best Setup", plan["best_setup"])
+        p3.metric("Avoid", plan["avoid_setup"])
+        p4.metric("Confidence", f"{plan['confidence']}%")
+        st.info(plan["reason"])
+        if not df.empty:
+            chart_df = df.dropna(subset=["date"]).sort_values("date").copy()
+            chart_df["equity"] = chart_df["realized_pl"].cumsum()
+            st.plotly_chart(px.line(chart_df, x="date", y="equity", title="Equity Curve"), use_container_width=True)
 
-        st.subheader("Platform P&L")
-        platform = trades_df.groupby("platform", as_index=False)["realized_pl"].sum()
-        st.plotly_chart(px.bar(platform, x="platform", y="realized_pl", text_auto=".2f"), use_container_width=True)
+    elif page == "Import":
+        st.title("📤 Import trades")
+        files = st.file_uploader("Upload CSV files", type=["csv"], accept_multiple_files=True)
+        if st.button("Import uploaded files", type="primary"):
+            if not files:
+                st.warning("Upload at least one CSV.")
+            else:
+                for f in files:
+                    path = UPLOAD_DIR / f.name
+                    path.write_bytes(f.getbuffer())
+                    digest = file_hash(path)
+                    conn = connect()
+                    exists = conn.execute("SELECT id FROM imported_files WHERE user_id=? AND source=? AND file_hash=?", (user_id, "streamlit_upload", digest)).fetchone()
+                    conn.close()
+                    if exists:
+                        st.info(f"Skipped already imported file: {f.name}")
+                        continue
+                    try:
+                        import_type, trades = parse_uploaded_file(path)
+                        batch_id = f"ST_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
+                        inserted, skipped = insert_trades(user_id, portfolio_id, trades, f.name, batch_id)
+                        conn = connect()
+                        conn.execute("INSERT OR IGNORE INTO imported_files(user_id, source, file_name, file_hash, batch_id, parsed_count, inserted_count, skipped_count, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (user_id, "streamlit_upload", f.name, digest, batch_id, len(trades), inserted, skipped, "OK"))
+                        conn.commit(); conn.close()
+                        st.success(f"{f.name}: parsed {len(trades)}, inserted {inserted}, skipped {skipped} ({import_type})")
+                    except Exception as e:
+                        st.error(f"{f.name}: {e}")
 
-        st.subheader("Monthly P&L by Platform")
-        monthly = monthly_platform_calendar(trades_df)
-        if not monthly.empty:
-            st.plotly_chart(px.bar(monthly, x="month", y="realized_pl", color="platform", barmode="group"), use_container_width=True)
+    elif page == "Trades":
+        st.title("📋 Trades")
+        if df.empty:
+            st.info("No trades yet.")
+        else:
+            cols = ["id", "broker", "symbol", "trade_datetime", "quantity", "side", "buy_price", "sell_price", "realized_pl", "setup_tag", "journal_note"]
+            st.dataframe(df[[c for c in cols if c in df.columns]], use_container_width=True, hide_index=True)
+
+    elif page == "Monthly":
+        st.title("📊 Monthly analysis")
+        if df.empty:
+            st.info("No trades yet.")
+        else:
+            monthly = df.dropna(subset=["month"]).groupby("month").agg(realized_pl=("realized_pl", "sum"), fees=("commission", "sum"), trades=("id", "count")).reset_index()
             st.dataframe(monthly, use_container_width=True, hide_index=True)
+            st.plotly_chart(px.bar(monthly, x="month", y="realized_pl", title="Monthly P&L"), use_container_width=True)
 
-        st.subheader("Recent Trades")
-        show_cols = [c for c in ["platform", "symbol", "trade_datetime", "side", "buy_price", "sell_price", "realized_pl"] if c in trades_df]
-        st.dataframe(trades_df[show_cols].head(50), use_container_width=True, hide_index=True)
+    elif page == "Export":
+        st.title("⬇️ Export")
+        if df.empty:
+            st.info("Nothing to export.")
+        else:
+            csv = df.to_csv(index=False).encode("utf-8")
+            st.download_button("Download trades CSV", csv, "trades_export.csv", "text/csv")
+
+    else:
+        st.title("📁 Folder import notes")
+        st.info("Streamlit Cloud cannot watch folders on your local computer. For deployed use, upload CSVs on the Import page. Folder auto-import only works when running Streamlit locally on the same machine as the export folders.")
+        folder = st.text_input("Local folder to scan (local-only)")
+        if st.button("Scan local folder") and folder:
+            folder_path = Path(folder).expanduser()
+            if not folder_path.exists():
+                st.error("Folder not found.")
+            else:
+                files = list(folder_path.glob("*.csv"))
+                st.write(f"Found {len(files)} CSV file(s). Use the Import page for cloud deployment.")
+
+
+if __name__ == "__main__":
+    main()
