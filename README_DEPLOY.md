@@ -1,6 +1,6 @@
-# Streamlit Trade Journal
+# Streamlit Trade Journal with Dropbox Auto-Import
 
-This is a Streamlit conversion of your Flask trade journal project.
+This package converts your trade journal into a Streamlit app and adds a cloud-friendly Dropbox CSV import workflow.
 
 ## Run locally
 
@@ -13,23 +13,38 @@ streamlit run streamlit_app.py
 
 1. Create a GitHub repository.
 2. Upload these files.
-3. In Streamlit Cloud, deploy `streamlit_app.py`.
+3. Deploy `streamlit_app.py` in Streamlit Cloud.
+4. Add secrets in Streamlit Cloud → App settings → Secrets:
+
+```toml
+[dropbox]
+access_token = "YOUR_DROPBOX_ACCESS_TOKEN"
+folder = "/TradeJournalExports"
+```
+
+Do **not** commit your real Dropbox token to GitHub.
+
+## Dropbox workflow
+
+1. Create a Dropbox folder, for example `/TradeJournalExports`.
+2. Put broker CSV exports in that folder:
+   - IBKR CSV
+   - Wealthsimple CSV
+   - NinjaTrader Performance CSV
+3. In the Streamlit app, open **Dropbox auto-import**.
+4. Click **Scan Dropbox Now**.
+5. The app downloads new CSVs, detects the broker format, imports trades, and skips files already imported by Dropbox content hash.
 
 ## Important database note
 
-This starter uses SQLite (`trades_streamlit.db`). That works locally and for demos, but Streamlit Cloud storage can reset. For a real production trading journal, migrate the database to PostgreSQL/Supabase.
+This package still uses SQLite (`trades_streamlit.db`). SQLite is fine for local testing and demos, but Streamlit Cloud file storage can reset. For a production trading journal, migrate the database to PostgreSQL/Supabase.
 
-## What is converted
+## Scheduling note
 
-- CSV upload imports for IBKR, Wealthsimple, NinjaTrader Performance CSV.
-- Duplicate protection.
-- Portfolio selector.
-- Dashboard metrics.
-- Monthly P&L calendar with IBKR / NinjaTrader / Wealthsimple platform totals.
-- Trades table.
-- Monthly analysis.
-- CSV export.
+This version uses a manual **Scan Dropbox Now** button because Streamlit Cloud is not a background-worker platform. For true scheduled import, use one of these:
 
-## Folder automation note
+- GitHub Actions cron calling a small Python importer
+- Render/Railway scheduled worker
+- Dropbox webhook receiver on a web backend
 
-Streamlit Cloud cannot read folders from your local computer. Folder auto-import can only work when running Streamlit locally on the same computer as the export folder. For cloud deployment, use the upload workflow.
+The Dropbox import logic is isolated in `dropbox_import.py`, so it can be reused later in a cron/worker.

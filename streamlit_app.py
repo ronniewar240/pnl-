@@ -13,6 +13,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+from dropbox_import import download_new_csvs
+
 APP_DIR = Path(__file__).resolve().parent
 DB_PATH = APP_DIR / "trades_streamlit.db"
 UPLOAD_DIR = APP_DIR / "uploads"
@@ -384,6 +386,153 @@ def generate_tomorrow_plan(df):
     return {"mode": "Selective", "best_setup": best, "avoid_setup": worst, "best_time": best_time, "confidence": confidence, "reason": f"{best} has the strongest recent/overall P&L in your journal."}
 
 
+
+def get_secret_value(*names, default=""):
+    """Read a value from Streamlit secrets using a few possible key names."""
+    for name in names:
+        try:
+            if "." in name:
+                head, tail = name.split(".", 1)
+                value = st.secrets.get(head, {}).get(tail, "")
+            else:
+                value = st.secrets.get(name, "")
+            if value:
+                return str(value)
+        except Exception:
+            continue
+    return default
+
+
+def has_imported_source_hash(user_id, source, file_hash):
+    conn = connect()
+    row = conn.execute(
+        "SELECT id FROM imported_files WHERE user_id=? AND source=? AND file_hash=? LIMIT 1",
+        (user_id, source, file_hash),
+    ).fetchone()
+    conn.close()
+    return row is not None
+
+
+def record_imported_source_file(user_id, source, file_name, file_hash, batch_id, parsed_count, inserted_count, skipped_count, status):
+    conn = connect()
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO imported_files(
+            user_id, source, file_name, file_hash, batch_id,
+            parsed_count, inserted_count, skipped_count, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (user_id, source, file_name, file_hash, batch_id, parsed_count, inserted_count, skipped_count, status),
+    )
+    conn.commit()
+    conn.close()
+
+
+def import_one_csv_path(user_id, portfolio_id, path, source, file_hash_value=None):
+    path = Path(path)
+    digest = file_hash_value or file_hash(path)
+    if has_imported_source_hash(user_id, source, digest):
+        return {
+            "file": path.name,
+            "status": "skipped_file_hash",
+            "parsed": 0,
+            "inserted": 0,
+            "skipped": 0,
+            "message": "Skipped already imported file.",
+        }
+
+    import_type, trades = parse_uploaded_file(path)
+    batch_id = f"{source.upper()}_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
+    inserted, skipped = insert_trades(user_id, portfolio_id, trades, path.name, batch_id)
+    record_imported_source_file(
+        user_id,
+        source,
+        path.name,
+        digest,
+        batch_id,
+        len(trades),
+        inserted,
+        skipped,
+        "OK",
+    )
+    return {
+        "file": path.name,
+        "status": "imported",
+        "type": import_type,
+        "batch_id": batch_id,
+        "parsed": len(trades),
+        "inserted": inserted,
+        "skipped": skipped,
+        "message": f"{import_type}: parsed {len(trades)}, inserted {inserted}, skipped {skipped}.",
+    }
+
+
+def render_dropbox_import_page(user_id, portfolio_id):
+    st.title("☁️ Dropbox folder auto-import")
+    st.caption("Cloud-friendly replacement for local folder watching. Put broker CSV exports in a Dropbox folder, then scan/import them from Streamlit.")
+
+    token = get_secret_value("dropbox.access_token", "DROPBOX_ACCESS_TOKEN")
+    default_folder = get_secret_value("dropbox.folder", "DROPBOX_FOLDER", default="/TradeJournalExports")
+
+    with st.expander("How to configure Streamlit secrets", expanded=not bool(token)):
+        st.markdown(
+            """
+Add this in **Streamlit Cloud → App settings → Secrets**:
+
+```toml
+[dropbox]
+access_token = "YOUR_DROPBOX_ACCESS_TOKEN"
+folder = "/TradeJournalExports"
+```
+
+Then export/download your IBKR, Wealthsimple, or NinjaTrader CSVs into that Dropbox folder.
+            """
+        )
+
+    folder = st.text_input("Dropbox folder path", value=default_folder or "/TradeJournalExports")
+    st.write("Status:", "✅ Dropbox token found" if token else "❌ Missing Dropbox token in secrets")
+
+    if st.button("Scan Dropbox Now", type="primary", disabled=not bool(token)):
+        with st.spinner("Scanning Dropbox and importing new CSV files..."):
+            try:
+                download_dir = UPLOAD_DIR / "dropbox"
+                downloaded = download_new_csvs(token, folder, download_dir)
+                if not downloaded:
+                    st.info("No CSV files found in that Dropbox folder.")
+                    return
+
+                results = []
+                for item in downloaded:
+                    if has_imported_source_hash(user_id, "dropbox", item.content_hash):
+                        results.append({
+                            "file": item.name,
+                            "status": "skipped_file_hash",
+                            "parsed": 0,
+                            "inserted": 0,
+                            "skipped": 0,
+                            "message": "Skipped already imported Dropbox file.",
+                        })
+                        continue
+                    try:
+                        results.append(import_one_csv_path(user_id, portfolio_id, item.local_path, "dropbox", item.content_hash))
+                    except Exception as e:
+                        results.append({
+                            "file": item.name,
+                            "status": "error",
+                            "parsed": 0,
+                            "inserted": 0,
+                            "skipped": 0,
+                            "message": str(e),
+                        })
+
+                st.subheader("Scan results")
+                st.dataframe(pd.DataFrame(results), use_container_width=True, hide_index=True)
+                st.success(f"Checked {len(downloaded)} file(s). Inserted {sum(r.get('inserted', 0) for r in results)} trade(s).")
+            except Exception as e:
+                st.error(f"Dropbox scan failed: {e}")
+
+    st.info("Tip: this simple version scans when you click the button. On Streamlit Cloud, true background jobs are not reliable; for scheduled scans, deploy the same logic as a cron job on Render/Railway/GitHub Actions, or add Dropbox webhooks later.")
+
 def render_monthly_calendar(df):
     st.subheader("📅 Monthly P&L Calendar")
     if df.empty or "date" not in df:
@@ -468,7 +617,7 @@ def main():
         get_or_create_portfolio(user_id, new_portfolio.strip())
         st.rerun()
     st.sidebar.caption(f"Portfolio: {selected_name}")
-    page = st.sidebar.radio("Page", ["Dashboard", "Import", "Trades", "Monthly", "Export", "Folder import notes"])
+    page = st.sidebar.radio("Page", ["Dashboard", "Import", "Dropbox auto-import", "Trades", "Monthly", "Export", "Folder import notes"])
     df = load_trades_df(user_id, portfolio_id)
 
     if page == "Dashboard":
@@ -524,6 +673,9 @@ def main():
                         st.success(f"{f.name}: parsed {len(trades)}, inserted {inserted}, skipped {skipped} ({import_type})")
                     except Exception as e:
                         st.error(f"{f.name}: {e}")
+
+    elif page == "Dropbox auto-import":
+        render_dropbox_import_page(user_id, portfolio_id)
 
     elif page == "Trades":
         st.title("📋 Trades")
