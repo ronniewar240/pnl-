@@ -29,30 +29,90 @@ st.set_page_config(page_title="Trade Journal", page_icon="📈", layout="wide")
 
 CUSTOM_CSS = """
 <style>
-:root { --border:rgba(148,163,184,.18); --muted:#94a3b8; --text:#e5eefb; --green:#22c55e; --red:#ef4444; }
-html, body, [data-testid="stAppViewContainer"] {
-    background: radial-gradient(circle at top left, rgba(124,156,255,.16), transparent 32%), linear-gradient(180deg,#07111f,#0b1020) !important;
-    color: var(--text) !important;
+:root {
+  --bg:#080d12; --bg2:#121820; --panel:#171d25; --panel2:#202832; --panel3:#111820;
+  --text:#f4f6fb; --muted:#a3abb8; --border:rgba(255,255,255,.075);
+  --red:#ff454b; --yellow:#ffbd2f; --green:#25d366; --blue:#6ea8ff;
 }
-.block-container { padding-top:1.1rem; padding-bottom:3rem; max-width:1500px; }
-[data-testid="stSidebar"] { background:linear-gradient(180deg,rgba(7,17,31,.98),rgba(10,15,30,.98)); border-right:1px solid var(--border); }
-[data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p { color:var(--text) !important; }
-.app-hero { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; padding:22px 24px; margin:0 0 18px 0; border:1px solid var(--border); border-radius:24px; background:linear-gradient(135deg,rgba(124,156,255,.18),rgba(34,197,94,.08)),rgba(15,23,42,.78); box-shadow:0 18px 60px rgba(0,0,0,.26); }
-.app-title { font-size:32px; font-weight:950; line-height:1.05; letter-spacing:-.03em; margin:0; }
-.app-subtitle { color:var(--muted); font-size:14px; margin-top:8px; }
-.hero-pill { display:inline-flex; align-items:center; gap:8px; padding:9px 12px; border:1px solid var(--border); border-radius:999px; background:rgba(255,255,255,.055); color:#dbeafe; font-size:13px; font-weight:800; white-space:nowrap; }
-.metric-card { background:linear-gradient(180deg,rgba(18,26,47,.96),rgba(15,21,40,.98)); border:1px solid var(--border); border-radius:20px; padding:18px; min-height:104px; box-shadow:0 12px 32px rgba(0,0,0,.20); }
-.metric-label { color:var(--muted); font-size:13px; font-weight:700; }
-.metric-value { font-size:30px; font-weight:950; margin-top:5px; letter-spacing:-.02em; }
-.section-title { font-size:22px; font-weight:900; letter-spacing:-.02em; margin:4px 0 10px 0; }
-.pos { color:var(--green) !important; } .neg { color:var(--red) !important; } .muted { color:var(--muted); font-size:13px; }
-.calendar-cell { border:1px solid rgba(148,163,184,.16); border-radius:14px; padding:9px; min-height:98px; overflow:hidden; box-shadow:inset 0 1px 0 rgba(255,255,255,.04); }
-.calendar-day { font-weight:950; color:#e5eefb; } .calendar-pnl { font-weight:950; font-size:14px; } .small-platform { font-size:10px; line-height:1.15; opacity:.95; }
-[data-testid="stDataFrame"] { border:1px solid var(--border); border-radius:18px; overflow:hidden; box-shadow:0 12px 32px rgba(0,0,0,.12); }
-.stButton > button, .stDownloadButton > button { border-radius:14px !important; border:1px solid rgba(124,156,255,.34) !important; background:linear-gradient(135deg,#5b8cff,#7c5cff) !important; color:white !important; font-weight:850 !important; min-height:42px; }
-div[data-baseweb="select"] > div, input, textarea { border-radius:14px !important; }
-hr { border-color:rgba(148,163,184,.14) !important; }
-@media (max-width:760px) { .app-hero { flex-direction:column; padding:18px; } .app-title { font-size:26px; } .metric-value { font-size:24px; } }
+html, body, [data-testid="stAppViewContainer"] {
+  background:
+    radial-gradient(circle at 24% 10%, rgba(255,69,75,.10), transparent 20%),
+    radial-gradient(circle at 85% 20%, rgba(255,189,47,.08), transparent 22%),
+    linear-gradient(135deg,#060a0e 0%, #0b1118 48%, #151b22 100%) !important;
+  color:var(--text)!important;
+}
+.block-container { max-width:1620px; padding:1.2rem 1.7rem 3rem 1.7rem; }
+[data-testid="stSidebar"] {
+  background:linear-gradient(180deg,#171d25 0%,#111820 100%)!important;
+  border-right:1px solid rgba(255,255,255,.07);
+  box-shadow:20px 0 60px rgba(0,0,0,.22);
+}
+[data-testid="stSidebar"] * { color:var(--text)!important; }
+[data-testid="stSidebar"] .stRadio label {
+  background:transparent; border-radius:14px; padding:.35rem .45rem; margin:.15rem 0;
+}
+[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) {
+  background:linear-gradient(135deg,rgba(255,69,75,.22),rgba(255,255,255,.04));
+  border:1px solid rgba(255,69,75,.25);
+}
+[data-testid="stSidebar"] .stButton > button { width:100%; }
+h1,h2,h3,h4,p,label,span,div { font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.top-nav {
+  display:flex; align-items:center; justify-content:space-between; gap:22px;
+  padding:10px 0 24px 0; margin-bottom:4px;
+}
+.top-tabs { display:flex; gap:28px; align-items:center; color:#cbd0d8; font-weight:700; }
+.top-tabs span:first-child { color:var(--red); position:relative; }
+.top-tabs span:first-child:after { content:""; position:absolute; height:2px; left:0; right:0; bottom:-18px; background:var(--red); border-radius:99px; }
+.search-pill {
+  min-width:280px; padding:14px 18px; border-radius:999px;
+  background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.03));
+  border:1px solid var(--border); color:#d8dee8; display:flex; justify-content:space-between; align-items:center;
+}
+.page-title { font-size:34px; line-height:1.05; font-weight:950; letter-spacing:-.04em; margin:10px 0 10px 0; }
+.sub-tabs { display:flex; gap:34px; align-items:center; color:#a9b0bd; font-weight:700; margin:8px 0 18px 0; }
+.sub-tabs span:first-child { color:white; position:relative; }
+.sub-tabs span:first-child:after { content:""; position:absolute; height:3px; width:44px; left:0; bottom:-13px; background:var(--red); border-radius:99px; }
+.dj-card {
+  background:linear-gradient(145deg,rgba(32,40,50,.92),rgba(17,24,32,.96));
+  border:1px solid var(--border); border-radius:20px; padding:20px;
+  box-shadow:0 24px 70px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.035);
+}
+.dj-card-sm { min-height:126px; }
+.dj-label { color:var(--muted); font-size:13px; font-weight:800; margin-bottom:8px; }
+.dj-value { font-size:28px; font-weight:950; letter-spacing:-.03em; color:white; }
+.dj-sub { color:#d7dbe3; font-size:14px; margin-top:4px; }
+.dj-icon {
+  width:48px; height:48px; border-radius:16px; display:flex; align-items:center; justify-content:center;
+  background:rgba(255,69,75,.14); color:var(--red); font-size:28px; font-weight:900;
+}
+.dj-icon.yellow { background:rgba(255,189,47,.14); color:var(--yellow); }
+.metric-row { display:flex; align-items:center; gap:16px; }
+.right-panel {
+  background:linear-gradient(180deg,rgba(30,37,46,.75),rgba(13,19,26,.88));
+  border-left:1px solid rgba(255,255,255,.06); border-radius:26px; padding:22px;
+  min-height:780px;
+}
+.profile-name { font-size:30px; font-weight:950; line-height:1.08; letter-spacing:-.03em; }
+.verify { color:#e5e9f1; margin-top:12px; }
+.profile-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin:28px 0; }
+.profile-grid .num { font-size:20px; font-weight:950; color:white; }
+.balance-card { min-height:220px; display:flex; flex-direction:column; justify-content:center; }
+.balance-value { font-size:30px; font-weight:950; margin:16px 0 8px; }
+.section-title { font-size:20px; font-weight:950; letter-spacing:-.02em; margin:10px 0 14px; }
+.muted { color:var(--muted); font-size:13px; }
+.pos { color:var(--green)!important; } .neg { color:var(--red)!important; } .yellow { color:var(--yellow)!important; }
+.calendar-cell { border:1px solid rgba(255,255,255,.07); border-radius:14px; padding:9px; min-height:90px; overflow:hidden; background:rgba(255,255,255,.04); }
+.calendar-day { font-weight:950; color:white; } .calendar-pnl { font-weight:950; font-size:13px; } .small-platform { font-size:10px; line-height:1.15; opacity:.95; }
+[data-testid="stDataFrame"] { border:1px solid var(--border); border-radius:18px; overflow:hidden; box-shadow:0 18px 45px rgba(0,0,0,.20); }
+.stButton > button, .stDownloadButton > button {
+  border-radius:14px!important; border:1px solid rgba(255,69,75,.34)!important;
+  background:linear-gradient(135deg,#ff454b,#ff6d3a)!important; color:white!important; font-weight:900!important; min-height:42px;
+}
+.stButton > button[kind="secondary"] { background:rgba(255,255,255,.06)!important; }
+div[data-baseweb="select"] > div, input, textarea { border-radius:14px!important; background:rgba(255,255,255,.04)!important; border-color:rgba(255,255,255,.08)!important; color:white!important; }
+hr { border-color:rgba(255,255,255,.07)!important; }
+@media (max-width:900px) { .top-nav,.top-tabs,.sub-tabs { flex-wrap:wrap; } .search-pill{min-width:100%;} .right-panel{min-height:auto;} .page-title{font-size:28px;} }
 </style>
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
@@ -358,7 +418,48 @@ def broker_platform_name(broker):
 
 def render_metric(label, value, klass=""):
     st.markdown(
-        f'<div class="metric-card"><div class="metric-label">{label}</div><div class="metric-value {klass}">{value}</div></div>',
+        f'<div class="dj-card dj-card-sm"><div class="dj-label">{label}</div><div class="dj-value {klass}">{value}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def stat_card(label, value, subtitle="", icon="↑", tone="red"):
+    icon_cls = "dj-icon yellow" if tone == "yellow" else "dj-icon"
+    st.markdown(
+        f"""
+        <div class="dj-card dj-card-sm">
+          <div class="metric-row">
+            <div class="{icon_cls}">{icon}</div>
+            <div>
+              <div class="dj-value">{value}</div>
+              <div class="dj-sub">{subtitle or label}</div>
+            </div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def dj_panel(title, body_html):
+    st.markdown(f'<div class="dj-card"><div class="section-title">{title}</div>{body_html}</div>', unsafe_allow_html=True)
+
+
+def top_nav():
+    st.markdown(
+        """
+        <div class="top-nav">
+          <div class="top-tabs"><span>Home</span><span>Settings</span><span>Help</span></div>
+          <div class="search-pill"><span>Search Reports...</span><span>⌕</span></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def sub_tabs():
+    st.markdown(
+        '<div class="sub-tabs"><span>Overview</span><span>Account</span><span>Trades</span><span>Analytics</span><span>Reports</span><span>Goals</span></div>',
         unsafe_allow_html=True,
     )
 
@@ -372,13 +473,13 @@ def money(x):
 def render_hero(title, subtitle="", portfolio_name=None):
     right = f'<div class="hero-pill">📁 {portfolio_name}</div>' if portfolio_name else ''
     html = f"""
-    <div class="app-hero">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin:8px 0 12px;">
         <div>
-            <div class="app-title">{title}</div>
-            <div class="app-subtitle">{subtitle}</div>
+          <div class="page-title">{title}</div>
+          <div class="muted">{subtitle}</div>
         </div>
         {right}
-    </div>
+      </div>
     """
     st.markdown(html, unsafe_allow_html=True)
 
@@ -675,29 +776,132 @@ def main():
     df = load_trades_df(user_id, portfolio_id)
 
     if page == "Dashboard":
-        render_hero("📈 Trade Journal Dashboard", "Clean view of your P&L, calendar, platforms, and trading plan.", selected_name)
+        top_nav()
+        render_hero("Main Dashboard", "Overview of your trading account, platforms, performance, and next-session plan.", selected_name)
+        sub_tabs()
+
         pnl = df["realized_pl"].sum() if not df.empty else 0
-        wins = (df["realized_pl"] > 0).sum() if not df.empty else 0
+        positive = df[df["realized_pl"] > 0]["realized_pl"].sum() if not df.empty else 0
+        negative = df[df["realized_pl"] < 0]["realized_pl"].sum() if not df.empty else 0
         trade_count = len(df)
+        wins = (df["realized_pl"] > 0).sum() if not df.empty else 0
         win_rate = (wins / trade_count * 100) if trade_count else 0
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Trades", trade_count)
-        c2.metric("Realized P&L", money(pnl))
-        c3.metric("Win Rate", f"{win_rate:.1f}%")
-        c4.metric("Platforms", df["broker"].nunique() if not df.empty else 0)
-        render_monthly_calendar(df)
-        section_heading("📅 Tomorrow Trading Plan", "Rules generated from your own trading journal.")
-        plan = generate_tomorrow_plan(df)
-        p1, p2, p3, p4 = st.columns(4)
-        p1.metric("Mode", plan["mode"])
-        p2.metric("Best Setup", plan["best_setup"])
-        p3.metric("Avoid", plan["avoid_setup"])
-        p4.metric("Confidence", f"{plan['confidence']}%")
-        st.info(plan["reason"])
-        if not df.empty:
-            chart_df = df.dropna(subset=["date"]).sort_values("date").copy()
-            chart_df["equity"] = chart_df["realized_pl"].cumsum()
-            st.plotly_chart(px.line(chart_df, x="date", y="equity", title="Equity Curve"), use_container_width=True)
+        fees = abs(df["commission"].sum()) if not df.empty and "commission" in df else 0
+        platforms_count = df["broker"].nunique() if not df.empty else 0
+        balance_like = pnl - fees
+        today = datetime.now().date()
+        today_pnl = df[df.get("date") == today]["realized_pl"].sum() if (not df.empty and "date" in df) else 0
+
+        left, right = st.columns([0.72, 0.28], gap="large")
+        with left:
+            row1 = st.columns([0.24, 0.24, 0.22, 0.30], gap="medium")
+            with row1[0]:
+                stat_card("Outgoing", money(abs(negative)), "Losses", "↑", "red")
+                st.write("")
+                stat_card("Incoming", money(positive), "Profits", "↓", "yellow")
+            with row1[1]:
+                plan = generate_tomorrow_plan(df)
+                dj_panel(
+                    "Top Strategy",
+                    f"""
+                    <div class='dj-sub'>{plan.get('best_setup', 'No data')}</div>
+                    <hr style='border-color:rgba(255,255,255,.08);margin:18px 0;'>
+                    <div style='display:flex;justify-content:space-between;align-items:center;'>
+                      <span class='muted'>Win Rate</span><span style='border:1px solid var(--yellow);border-radius:999px;padding:5px 10px;color:var(--yellow);font-weight:900'>{win_rate:.0f}%</span>
+                    </div>
+                    """,
+                )
+                st.write("")
+                donut_fig = go.Figure(data=[go.Pie(values=[max(positive,0), abs(min(negative,0))], labels=["Profits", "Losses"], hole=.58, marker=dict(colors=["#ffbd2f", "#ff454b"]))])
+                donut_fig.update_layout(height=210, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#f4f6fb", showlegend=False)
+                st.markdown('<div class="dj-card">', unsafe_allow_html=True)
+                st.plotly_chart(donut_fig, use_container_width=True, config={"displayModeBar": False})
+                st.markdown(f"<div style='text-align:center;margin-top:-96px;margin-bottom:54px;'><div class='dj-value'>{money(pnl)}</div><div class='muted'>Received</div></div></div>", unsafe_allow_html=True)
+            with row1[2:]:
+                section_heading("My Performance", "Platform scatter and recent trading flow")
+                if not df.empty:
+                    sc = df.copy()
+                    sc["dt"] = pd.to_datetime(sc["trade_datetime"], errors="coerce")
+                    sc = sc.dropna(subset=["dt"]).tail(80)
+                    if not sc.empty:
+                        sc["weekday"] = sc["dt"].dt.day_name().str[:3]
+                        sc["platform"] = sc["broker"].map(broker_platform_name)
+                        fig = px.scatter(sc, x="weekday", y="realized_pl", size=sc["realized_pl"].abs().clip(lower=8), color="platform", color_discrete_map={"IBKR":"#ff454b","NinjaTrader":"#ffbd2f","Wealthsimple":"#6ea8ff","Other":"#a3abb8"}, title=None)
+                        fig.update_layout(height=330, margin=dict(l=10,r=10,t=8,b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(255,255,255,.02)", font_color="#d6dbe6", legend=dict(orientation="h", y=-.18), xaxis=dict(gridcolor="rgba(255,255,255,.06)"), yaxis=dict(gridcolor="rgba(255,255,255,.06)"))
+                        st.markdown('<div class="dj-card">', unsafe_allow_html=True)
+                        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+                        st.markdown('</div>', unsafe_allow_html=True)
+                    else:
+                        dj_panel("My Performance", "<div class='muted'>Import dated trades to populate this chart.</div>")
+                else:
+                    dj_panel("My Performance", "<div class='muted'>No trades yet.</div>")
+
+            lower = st.columns([0.58,0.42], gap="medium")
+            with lower[0]:
+                section_heading("Account Overview")
+                if not df.empty:
+                    daily = df.dropna(subset=["date"]).groupby("date")["realized_pl"].sum().tail(7).reset_index()
+                    if not daily.empty:
+                        colors = ["#ff454b" if v < 0 else "#ffbd2f" for v in daily["realized_pl"]]
+                        fig = go.Figure(go.Bar(x=daily["realized_pl"], y=[str(d) for d in daily["date"]], orientation="h", marker_color=colors, width=.22))
+                        fig.update_layout(height=330, margin=dict(l=8,r=8,t=8,b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(255,255,255,.015)", font_color="#d6dbe6", xaxis=dict(gridcolor="rgba(255,255,255,.06)"), yaxis=dict(gridcolor="rgba(255,255,255,.0)"))
+                        st.markdown('<div class="dj-card">', unsafe_allow_html=True)
+                        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+                        st.markdown('</div>', unsafe_allow_html=True)
+                else:
+                    dj_panel("Account Overview", "<div class='muted'>No data yet.</div>")
+            with lower[1]:
+                section_heading("Analytics")
+                if not df.empty:
+                    chart_df = df.dropna(subset=["date"]).sort_values("date").copy()
+                    chart_df["equity"] = chart_df["realized_pl"].cumsum()
+                    fig = go.Figure()
+                    fig.add_trace(go.Bar(x=chart_df["date"].tail(12), y=chart_df["realized_pl"].tail(12), marker_color="#ff454b", name="P&L"))
+                    fig.add_trace(go.Scatter(x=chart_df["date"].tail(12), y=chart_df["equity"].tail(12), mode="lines+markers", line=dict(color="white", width=2), marker=dict(size=7), name="Equity"))
+                    fig.update_layout(height=330, margin=dict(l=8,r=8,t=8,b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(255,255,255,.015)", font_color="#d6dbe6", showlegend=False, xaxis=dict(gridcolor="rgba(255,255,255,.04)"), yaxis=dict(gridcolor="rgba(255,255,255,.06)"))
+                    st.markdown('<div class="dj-card">', unsafe_allow_html=True)
+                    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+                    st.markdown('</div>', unsafe_allow_html=True)
+                else:
+                    dj_panel("Analytics", "<div class='muted'>No data yet.</div>")
+
+            render_monthly_calendar(df)
+            section_heading("Tomorrow Trading Plan", "AI-style planning from your journal statistics.")
+            t1,t2,t3,t4 = st.columns(4)
+            t1.metric("Mode", plan["mode"])
+            t2.metric("Best Setup", plan["best_setup"])
+            t3.metric("Avoid", plan["avoid_setup"])
+            t4.metric("Confidence", f"{plan['confidence']}%")
+            st.info(plan["reason"])
+
+        with right:
+            st.markdown('<div class="right-panel">', unsafe_allow_html=True)
+            initials = (user_email.split("@")[0] or "Trader").replace(".", " ").replace("_", " ").title()
+            st.markdown(f"<div class='profile-name'>{initials}</div><div class='verify'>Verified Account <span style='color:var(--red);font-weight:900'>●</span></div>", unsafe_allow_html=True)
+            st.markdown(f"""
+              <div class='profile-grid'>
+                <div><div class='muted'>Income</div><div class='num'>{money(positive)}</div></div>
+                <div><div class='muted'>Expenses</div><div class='num'>{money(fees)}</div></div>
+                <div><div class='muted'>Points</div><div class='num'>{trade_count}</div></div>
+              </div>
+            """, unsafe_allow_html=True)
+            st.markdown(f"""
+              <div class='dj-card balance-card'>
+                <div style='font-size:32px;'>🟡 🔴</div>
+                <div class='balance-value'>{money(balance_like)}</div>
+                <div class='dj-sub'>Balance</div>
+                <div style='letter-spacing:8px;margin-top:18px;color:#e9edf5;'>**** **** **** 3667</div>
+              </div>
+            """, unsafe_allow_html=True)
+            st.write("")
+            st.markdown(f"<div class='dj-card'><div class='muted'>Earnings</div><div class='balance-value'>{money(pnl)}</div>", unsafe_allow_html=True)
+            if not df.empty:
+                weekly = df.dropna(subset=["date"]).groupby("date")["realized_pl"].sum().tail(7).reset_index()
+                fig = go.Figure(go.Scatter(x=weekly["date"], y=weekly["realized_pl"], mode="lines", line=dict(color="#ff454b", width=3)))
+                fig.update_layout(height=180, margin=dict(l=0,r=0,t=10,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#d6dbe6", xaxis=dict(visible=False), yaxis=dict(visible=False))
+                st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
     elif page == "Import":
         render_hero("📤 Import trades", "Upload IBKR, Wealthsimple, NinjaTrader, or supported CSV exports.", selected_name)
