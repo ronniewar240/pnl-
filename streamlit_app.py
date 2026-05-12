@@ -29,90 +29,159 @@ st.set_page_config(page_title="Trade Journal", page_icon="📈", layout="wide")
 
 CUSTOM_CSS = """
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
 :root {
-  --bg:#080d12; --bg2:#121820; --panel:#171d25; --panel2:#202832; --panel3:#111820;
-  --text:#f4f6fb; --muted:#a3abb8; --border:rgba(255,255,255,.075);
-  --red:#ff454b; --yellow:#ffbd2f; --green:#25d366; --blue:#6ea8ff;
+  --bg:#070b10;
+  --bg-soft:#0c1219;
+  --sidebar:#141a22;
+  --panel:#151c25;
+  --panel-2:#1b2430;
+  --panel-3:#0f151d;
+  --text:#f6f7fb;
+  --muted:#939cab;
+  --muted-2:#6f7a89;
+  --border:rgba(255,255,255,.08);
+  --border-strong:rgba(255,255,255,.14);
+  --red:#ff4248;
+  --red-2:#ff6b3d;
+  --yellow:#ffbd2e;
+  --green:#2bd576;
+  --blue:#74a7ff;
+  --shadow:0 26px 80px rgba(0,0,0,.36);
 }
 html, body, [data-testid="stAppViewContainer"] {
   background:
-    radial-gradient(circle at 24% 10%, rgba(255,69,75,.10), transparent 20%),
-    radial-gradient(circle at 85% 20%, rgba(255,189,47,.08), transparent 22%),
-    linear-gradient(135deg,#060a0e 0%, #0b1118 48%, #151b22 100%) !important;
+    radial-gradient(circle at 20% 0%, rgba(255,66,72,.14), transparent 24%),
+    radial-gradient(circle at 83% 14%, rgba(255,189,46,.09), transparent 24%),
+    linear-gradient(135deg,#05080d 0%, #091018 42%, #121922 100%) !important;
   color:var(--text)!important;
 }
-.block-container { max-width:1620px; padding:1.2rem 1.7rem 3rem 1.7rem; }
+* { font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.block-container { max-width:1560px; padding:1.25rem 1.4rem 3rem 1.4rem; }
+#MainMenu, footer, header { visibility:hidden; }
 [data-testid="stSidebar"] {
-  background:linear-gradient(180deg,#171d25 0%,#111820 100%)!important;
-  border-right:1px solid rgba(255,255,255,.07);
-  box-shadow:20px 0 60px rgba(0,0,0,.22);
+  background:
+    linear-gradient(180deg,rgba(30,38,49,.96) 0%,rgba(15,21,30,.98) 100%) !important;
+  border-right:1px solid var(--border);
+  box-shadow:18px 0 70px rgba(0,0,0,.28);
+  min-width:270px !important;
 }
 [data-testid="stSidebar"] * { color:var(--text)!important; }
-[data-testid="stSidebar"] .stRadio label {
-  background:transparent; border-radius:14px; padding:.35rem .45rem; margin:.15rem 0;
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p { color:var(--muted)!important; }
+[data-testid="stSidebar"] .stTextInput input,
+[data-testid="stSidebar"] div[data-baseweb="select"] > div {
+  background:rgba(255,255,255,.055)!important;
+  border:1px solid rgba(255,255,255,.08)!important;
+  border-radius:15px!important;
+  min-height:42px;
+}
+[data-testid="stSidebar"] [role="radiogroup"] label {
+  border-radius:16px!important;
+  padding:10px 12px!important;
+  margin:4px 0!important;
+  transition:.18s ease;
+  border:1px solid transparent;
+}
+[data-testid="stSidebar"] [role="radiogroup"] label:hover {
+  background:rgba(255,255,255,.05)!important;
+  border-color:rgba(255,255,255,.08)!important;
 }
 [data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) {
-  background:linear-gradient(135deg,rgba(255,69,75,.22),rgba(255,255,255,.04));
-  border:1px solid rgba(255,69,75,.25);
+  background:linear-gradient(135deg,rgba(255,66,72,.28),rgba(255,255,255,.055))!important;
+  border:1px solid rgba(255,66,72,.34)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07);
 }
 [data-testid="stSidebar"] .stButton > button { width:100%; }
-h1,h2,h3,h4,p,label,span,div { font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.sidebar-brand {
+  display:flex; align-items:center; gap:12px; margin:4px 0 20px 0;
+}
+.sidebar-logo {
+  width:44px; height:44px; border-radius:50%;
+  background:linear-gradient(90deg,#fff 0 45%, #ff4248 45% 100%);
+  box-shadow:0 10px 30px rgba(255,66,72,.22);
+}
+.sidebar-title { font-size:18px; font-weight:950; color:#fff; letter-spacing:-.02em; }
+.sidebar-sub { color:var(--muted); font-size:12px; margin-top:2px; }
+.portfolio-chip {
+  background:rgba(255,255,255,.055); border:1px solid var(--border);
+  border-radius:18px; padding:12px 14px; margin:12px 0;
+}
 .top-nav {
-  display:flex; align-items:center; justify-content:space-between; gap:22px;
-  padding:10px 0 24px 0; margin-bottom:4px;
+  display:flex; align-items:center; justify-content:space-between; gap:18px;
+  padding:6px 0 22px 0; margin-bottom:2px;
 }
-.top-tabs { display:flex; gap:28px; align-items:center; color:#cbd0d8; font-weight:700; }
-.top-tabs span:first-child { color:var(--red); position:relative; }
-.top-tabs span:first-child:after { content:""; position:absolute; height:2px; left:0; right:0; bottom:-18px; background:var(--red); border-radius:99px; }
+.top-tabs { display:flex; gap:28px; align-items:center; color:#cbd0d8; font-weight:800; }
+.top-tabs span { opacity:.72; }
+.top-tabs span:first-child { color:var(--red); opacity:1; position:relative; }
+.top-tabs span:first-child:after { content:""; position:absolute; height:3px; left:0; right:0; bottom:-19px; background:linear-gradient(90deg,var(--red),var(--red-2)); border-radius:99px; }
 .search-pill {
-  min-width:280px; padding:14px 18px; border-radius:999px;
-  background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.03));
+  min-width:320px; padding:14px 18px; border-radius:999px;
+  background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.035));
   border:1px solid var(--border); color:#d8dee8; display:flex; justify-content:space-between; align-items:center;
+  box-shadow:0 18px 45px rgba(0,0,0,.18);
 }
-.page-title { font-size:34px; line-height:1.05; font-weight:950; letter-spacing:-.04em; margin:10px 0 10px 0; }
-.sub-tabs { display:flex; gap:34px; align-items:center; color:#a9b0bd; font-weight:700; margin:8px 0 18px 0; }
-.sub-tabs span:first-child { color:white; position:relative; }
-.sub-tabs span:first-child:after { content:""; position:absolute; height:3px; width:44px; left:0; bottom:-13px; background:var(--red); border-radius:99px; }
-.dj-card {
-  background:linear-gradient(145deg,rgba(32,40,50,.92),rgba(17,24,32,.96));
-  border:1px solid var(--border); border-radius:20px; padding:20px;
-  box-shadow:0 24px 70px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.035);
+.page-title { font-size:36px; line-height:1.04; font-weight:950; letter-spacing:-.045em; margin:10px 0 9px 0; color:#fff; }
+.hero-pill {
+  background:rgba(255,255,255,.06); border:1px solid var(--border); color:#e8ecf4;
+  padding:10px 14px; border-radius:999px; font-weight:800; white-space:nowrap;
+}
+.sub-tabs { display:flex; gap:30px; align-items:center; color:#a9b0bd; font-weight:800; margin:8px 0 18px 0; }
+.sub-tabs span { opacity:.76; }
+.sub-tabs span:first-child { color:white; opacity:1; position:relative; }
+.sub-tabs span:first-child:after { content:""; position:absolute; height:3px; width:44px; left:0; bottom:-13px; background:linear-gradient(90deg,var(--red),var(--red-2)); border-radius:99px; }
+.dj-card, div[data-testid="stMetric"], [data-testid="stDataFrame"] {
+  background:linear-gradient(145deg,rgba(30,39,51,.95),rgba(14,20,29,.98));
+  border:1px solid var(--border); border-radius:22px; padding:20px;
+  box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.04);
 }
 .dj-card-sm { min-height:126px; }
-.dj-label { color:var(--muted); font-size:13px; font-weight:800; margin-bottom:8px; }
-.dj-value { font-size:28px; font-weight:950; letter-spacing:-.03em; color:white; }
+.dj-card:hover { border-color:rgba(255,255,255,.13); transform:translateY(-1px); transition:.18s ease; }
+.dj-label { color:var(--muted); font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; }
+.dj-value { font-size:28px; font-weight:950; letter-spacing:-.035em; color:white; }
 .dj-sub { color:#d7dbe3; font-size:14px; margin-top:4px; }
 .dj-icon {
-  width:48px; height:48px; border-radius:16px; display:flex; align-items:center; justify-content:center;
-  background:rgba(255,69,75,.14); color:var(--red); font-size:28px; font-weight:900;
+  width:52px; height:52px; border-radius:17px; display:flex; align-items:center; justify-content:center;
+  background:rgba(255,66,72,.16); color:var(--red); font-size:30px; font-weight:950;
 }
-.dj-icon.yellow { background:rgba(255,189,47,.14); color:var(--yellow); }
+.dj-icon.yellow { background:rgba(255,189,46,.16); color:var(--yellow); }
 .metric-row { display:flex; align-items:center; gap:16px; }
 .right-panel {
-  background:linear-gradient(180deg,rgba(30,37,46,.75),rgba(13,19,26,.88));
-  border-left:1px solid rgba(255,255,255,.06); border-radius:26px; padding:22px;
-  min-height:780px;
+  background:linear-gradient(180deg,rgba(30,39,51,.82),rgba(12,18,26,.92));
+  border:1px solid var(--border); border-radius:28px; padding:24px;
+  min-height:760px; box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.04);
 }
-.profile-name { font-size:30px; font-weight:950; line-height:1.08; letter-spacing:-.03em; }
+.profile-name { font-size:31px; font-weight:950; line-height:1.08; letter-spacing:-.04em; color:#fff; }
 .verify { color:#e5e9f1; margin-top:12px; }
-.profile-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin:28px 0; }
+.profile-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:28px 0; }
 .profile-grid .num { font-size:20px; font-weight:950; color:white; }
-.balance-card { min-height:220px; display:flex; flex-direction:column; justify-content:center; }
-.balance-value { font-size:30px; font-weight:950; margin:16px 0 8px; }
-.section-title { font-size:20px; font-weight:950; letter-spacing:-.02em; margin:10px 0 14px; }
+.balance-card { min-height:215px; display:flex; flex-direction:column; justify-content:center; }
+.balance-value { font-size:33px; font-weight:950; margin:16px 0 8px; letter-spacing:-.04em; }
+.section-title { font-size:20px; font-weight:950; letter-spacing:-.03em; margin:10px 0 14px; color:#fff; }
 .muted { color:var(--muted); font-size:13px; }
 .pos { color:var(--green)!important; } .neg { color:var(--red)!important; } .yellow { color:var(--yellow)!important; }
-.calendar-cell { border:1px solid rgba(255,255,255,.07); border-radius:14px; padding:9px; min-height:90px; overflow:hidden; background:rgba(255,255,255,.04); }
+.calendar-cell { border:1px solid rgba(255,255,255,.075); border-radius:15px; padding:10px; min-height:92px; overflow:hidden; background:rgba(255,255,255,.04); }
 .calendar-day { font-weight:950; color:white; } .calendar-pnl { font-weight:950; font-size:13px; } .small-platform { font-size:10px; line-height:1.15; opacity:.95; }
-[data-testid="stDataFrame"] { border:1px solid var(--border); border-radius:18px; overflow:hidden; box-shadow:0 18px 45px rgba(0,0,0,.20); }
+[data-testid="stDataFrame"] { padding:0!important; overflow:hidden; }
+.stDataFrame iframe { border-radius:18px; }
 .stButton > button, .stDownloadButton > button {
-  border-radius:14px!important; border:1px solid rgba(255,69,75,.34)!important;
-  background:linear-gradient(135deg,#ff454b,#ff6d3a)!important; color:white!important; font-weight:900!important; min-height:42px;
+  border-radius:15px!important; border:1px solid rgba(255,66,72,.34)!important;
+  background:linear-gradient(135deg,#ff4248,#ff7042)!important; color:white!important; font-weight:950!important; min-height:44px;
+  box-shadow:0 14px 35px rgba(255,66,72,.18);
 }
-.stButton > button[kind="secondary"] { background:rgba(255,255,255,.06)!important; }
-div[data-baseweb="select"] > div, input, textarea { border-radius:14px!important; background:rgba(255,255,255,.04)!important; border-color:rgba(255,255,255,.08)!important; color:white!important; }
-hr { border-color:rgba(255,255,255,.07)!important; }
-@media (max-width:900px) { .top-nav,.top-tabs,.sub-tabs { flex-wrap:wrap; } .search-pill{min-width:100%;} .right-panel{min-height:auto;} .page-title{font-size:28px;} }
+.stButton > button:hover, .stDownloadButton > button:hover { border-color:rgba(255,255,255,.28)!important; transform:translateY(-1px); }
+div[data-baseweb="select"] > div, input, textarea {
+  border-radius:15px!important; background:rgba(255,255,255,.045)!important; border-color:rgba(255,255,255,.085)!important; color:white!important;
+}
+[data-testid="stFileUploader"] {
+  background:linear-gradient(145deg,rgba(30,39,51,.86),rgba(14,20,29,.92));
+  border:1px dashed rgba(255,255,255,.16); border-radius:22px; padding:18px;
+}
+[data-testid="stMetric"] label { color:var(--muted)!important; font-weight:800!important; }
+[data-testid="stMetricValue"] { color:#fff!important; font-weight:950!important; }
+hr { border-color:rgba(255,255,255,.075)!important; }
+.streamlit-expanderHeader { background:rgba(255,255,255,.045)!important; border-radius:15px!important; }
+@media (max-width:1100px) { .right-panel{min-height:auto;} .search-pill{min-width:240px;} .page-title{font-size:31px;} }
+@media (max-width:800px) { .top-nav,.top-tabs,.sub-tabs { flex-wrap:wrap; } .search-pill{min-width:100%;} .page-title{font-size:28px;} .profile-grid{grid-template-columns:1fr;} }
 </style>
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
@@ -750,8 +819,15 @@ def render_monthly_calendar(df):
 
 def main():
     init_db()
-    st.sidebar.markdown("### 📈 Trade Journal")
-    st.sidebar.caption("Trading analytics, imports, and platform dashboards")
+    st.sidebar.markdown("""
+    <div class="sidebar-brand">
+      <div class="sidebar-logo"></div>
+      <div>
+        <div class="sidebar-title">Trade Journal</div>
+        <div class="sidebar-sub">Analytics • Imports • AI Plans</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
     user_email = st.sidebar.text_input("User email", value=st.session_state.get("email", "streamlit@local"))
     st.session_state["email"] = user_email
     user_id = get_or_create_user(user_email)
@@ -766,16 +842,21 @@ def main():
     if st.sidebar.button("Add portfolio") and new_portfolio.strip():
         get_or_create_portfolio(user_id, new_portfolio.strip())
         st.rerun()
-    st.sidebar.markdown(f"**Current portfolio:** `{selected_name}`")
+    st.sidebar.markdown(f"""
+    <div class="portfolio-chip">
+      <div class="muted">Current Portfolio</div>
+      <div style="font-weight:950;font-size:16px;color:white;margin-top:4px;">{selected_name}</div>
+    </div>
+    """, unsafe_allow_html=True)
     st.sidebar.divider()
     page = st.sidebar.radio(
         "Navigation",
-        ["Dashboard", "Import", "Dropbox auto-import", "Trades", "Monthly", "Export", "Folder import notes"],
+        ["🏠 Dashboard", "📤 Import", "☁️ Dropbox auto-import", "📋 Trades", "📊 Monthly", "⬇️ Export", "📁 Folder import notes"],
         label_visibility="collapsed",
     )
     df = load_trades_df(user_id, portfolio_id)
 
-    if page == "Dashboard":
+    if page == "🏠 Dashboard":
         top_nav()
         render_hero("Main Dashboard", "Overview of your trading account, platforms, performance, and next-session plan.", selected_name)
         sub_tabs()
@@ -903,7 +984,7 @@ def main():
             st.markdown('</div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-    elif page == "Import":
+    elif page == "📤 Import":
         render_hero("📤 Import trades", "Upload IBKR, Wealthsimple, NinjaTrader, or supported CSV exports.", selected_name)
         files = st.file_uploader("Upload CSV files", type=["csv"], accept_multiple_files=True)
         if st.button("Import uploaded files", type="primary"):
@@ -931,10 +1012,10 @@ def main():
                     except Exception as e:
                         st.error(f"{f.name}: {e}")
 
-    elif page == "Dropbox auto-import":
+    elif page == "☁️ Dropbox auto-import":
         render_dropbox_import_page(user_id, portfolio_id)
 
-    elif page == "Trades":
+    elif page == "📋 Trades":
         render_hero("📋 Trades", "Compact table of your imported trades.", selected_name)
         if df.empty:
             st.info("No trades yet.")
@@ -942,7 +1023,7 @@ def main():
             cols = ["id", "broker", "symbol", "trade_datetime", "quantity", "side", "buy_price", "sell_price", "realized_pl", "setup_tag", "journal_note"]
             st.dataframe(df[[c for c in cols if c in df.columns]], width="stretch", hide_index=True)
 
-    elif page == "Monthly":
+    elif page == "📊 Monthly":
         render_hero("📊 Monthly analysis", "Monthly totals, fees, and trade counts.", selected_name)
         if df.empty:
             st.info("No trades yet.")
@@ -951,7 +1032,7 @@ def main():
             st.dataframe(monthly, width="stretch", hide_index=True)
             st.plotly_chart(px.bar(monthly, x="month", y="realized_pl", title="Monthly P&L"), width="stretch")
 
-    elif page == "Export":
+    elif page == "⬇️ Export":
         render_hero("⬇️ Export", "Download your filtered journal data.", selected_name)
         if df.empty:
             st.info("Nothing to export.")
