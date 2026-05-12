@@ -29,157 +29,156 @@ st.set_page_config(page_title="Trade Journal", page_icon="📈", layout="wide")
 
 CUSTOM_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 :root {
-  --bg:#070b10;
-  --bg-soft:#0c1219;
-  --sidebar:#141a22;
-  --panel:#151c25;
-  --panel-2:#1b2430;
-  --panel-3:#0f151d;
-  --text:#f6f7fb;
-  --muted:#939cab;
-  --muted-2:#6f7a89;
-  --border:rgba(255,255,255,.08);
-  --border-strong:rgba(255,255,255,.14);
-  --red:#ff4248;
-  --red-2:#ff6b3d;
-  --yellow:#ffbd2e;
-  --green:#2bd576;
-  --blue:#74a7ff;
-  --shadow:0 26px 80px rgba(0,0,0,.36);
+  --bg:#f7f7f5;
+  --sidebar:#f0f0ed;
+  --panel:#ffffff;
+  --panel-soft:#fafafa;
+  --text:#171717;
+  --muted:#6b6b63;
+  --muted-2:#8b8b82;
+  --border:#e7e5df;
+  --border-strong:#d8d6cf;
+  --accent:#111111;
+  --accent-soft:#f1f1ee;
+  --green:#1f8f55;
+  --red:#d64545;
+  --yellow:#b7791f;
+  --blue:#2563eb;
+  --shadow:0 8px 28px rgba(28,28,24,.06);
 }
 html, body, [data-testid="stAppViewContainer"] {
-  background:
-    radial-gradient(circle at 20% 0%, rgba(255,66,72,.14), transparent 24%),
-    radial-gradient(circle at 83% 14%, rgba(255,189,46,.09), transparent 24%),
-    linear-gradient(135deg,#05080d 0%, #091018 42%, #121922 100%) !important;
+  background:var(--bg)!important;
   color:var(--text)!important;
 }
 * { font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-.block-container { max-width:1560px; padding:1.25rem 1.4rem 3rem 1.4rem; }
+.block-container { max-width:1380px; padding:1.55rem 1.65rem 3rem 1.65rem; }
 #MainMenu, footer, header { visibility:hidden; }
 [data-testid="stSidebar"] {
-  background:
-    linear-gradient(180deg,rgba(30,38,49,.96) 0%,rgba(15,21,30,.98) 100%) !important;
-  border-right:1px solid var(--border);
-  box-shadow:18px 0 70px rgba(0,0,0,.28);
-  min-width:270px !important;
+  background:var(--sidebar)!important;
+  border-right:1px solid var(--border)!important;
+  box-shadow:none!important;
+  min-width:260px!important;
 }
 [data-testid="stSidebar"] * { color:var(--text)!important; }
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p { color:var(--muted)!important; }
 [data-testid="stSidebar"] .stTextInput input,
 [data-testid="stSidebar"] div[data-baseweb="select"] > div {
-  background:rgba(255,255,255,.055)!important;
-  border:1px solid rgba(255,255,255,.08)!important;
-  border-radius:15px!important;
-  min-height:42px;
+  background:var(--panel)!important;
+  border:1px solid var(--border)!important;
+  border-radius:12px!important;
+  min-height:38px;
+  box-shadow:none!important;
 }
 [data-testid="stSidebar"] [role="radiogroup"] label {
-  border-radius:16px!important;
-  padding:10px 12px!important;
-  margin:4px 0!important;
-  transition:.18s ease;
+  border-radius:10px!important;
+  padding:9px 10px!important;
+  margin:2px 0!important;
+  transition:.15s ease;
   border:1px solid transparent;
+  background:transparent!important;
 }
 [data-testid="stSidebar"] [role="radiogroup"] label:hover {
-  background:rgba(255,255,255,.05)!important;
-  border-color:rgba(255,255,255,.08)!important;
+  background:#e9e9e5!important;
+  border-color:var(--border)!important;
 }
 [data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) {
-  background:linear-gradient(135deg,rgba(255,66,72,.28),rgba(255,255,255,.055))!important;
-  border:1px solid rgba(255,66,72,.34)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.07);
+  background:var(--panel)!important;
+  border:1px solid var(--border-strong)!important;
+  box-shadow:0 1px 2px rgba(0,0,0,.04);
 }
 [data-testid="stSidebar"] .stButton > button { width:100%; }
-.sidebar-brand {
-  display:flex; align-items:center; gap:12px; margin:4px 0 20px 0;
-}
+.sidebar-brand { display:flex; align-items:center; gap:12px; margin:5px 0 18px 0; }
 .sidebar-logo {
-  width:44px; height:44px; border-radius:50%;
-  background:linear-gradient(90deg,#fff 0 45%, #ff4248 45% 100%);
-  box-shadow:0 10px 30px rgba(255,66,72,.22);
+  width:38px; height:38px; border-radius:10px;
+  background:#111; box-shadow:none; position:relative;
 }
-.sidebar-title { font-size:18px; font-weight:950; color:#fff; letter-spacing:-.02em; }
+.sidebar-logo:after { content:"TJ"; color:#fff; font-weight:800; font-size:13px; position:absolute; inset:0; display:grid; place-items:center; }
+.sidebar-title { font-size:18px; font-weight:750; color:var(--text); letter-spacing:-.03em; }
 .sidebar-sub { color:var(--muted); font-size:12px; margin-top:2px; }
 .portfolio-chip {
-  background:rgba(255,255,255,.055); border:1px solid var(--border);
-  border-radius:18px; padding:12px 14px; margin:12px 0;
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:14px; padding:12px 13px; margin:12px 0;
+  box-shadow:0 1px 2px rgba(0,0,0,.03);
 }
 .top-nav {
   display:flex; align-items:center; justify-content:space-between; gap:18px;
-  padding:6px 0 22px 0; margin-bottom:2px;
+  padding:2px 0 18px 0; margin-bottom:4px;
 }
-.top-tabs { display:flex; gap:28px; align-items:center; color:#cbd0d8; font-weight:800; }
-.top-tabs span { opacity:.72; }
-.top-tabs span:first-child { color:var(--red); opacity:1; position:relative; }
-.top-tabs span:first-child:after { content:""; position:absolute; height:3px; left:0; right:0; bottom:-19px; background:linear-gradient(90deg,var(--red),var(--red-2)); border-radius:99px; }
+.top-tabs { display:flex; gap:22px; align-items:center; color:var(--muted); font-weight:650; }
+.top-tabs span { opacity:1; }
+.top-tabs span:first-child { color:var(--text); opacity:1; position:relative; }
+.top-tabs span:first-child:after { content:""; position:absolute; height:2px; left:0; right:0; bottom:-10px; background:var(--text); border-radius:99px; }
 .search-pill {
-  min-width:320px; padding:14px 18px; border-radius:999px;
-  background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.035));
-  border:1px solid var(--border); color:#d8dee8; display:flex; justify-content:space-between; align-items:center;
-  box-shadow:0 18px 45px rgba(0,0,0,.18);
+  min-width:300px; padding:11px 14px; border-radius:12px;
+  background:var(--panel); border:1px solid var(--border); color:var(--muted);
+  display:flex; justify-content:space-between; align-items:center;
+  box-shadow:none;
 }
-.page-title { font-size:36px; line-height:1.04; font-weight:950; letter-spacing:-.045em; margin:10px 0 9px 0; color:#fff; }
+.page-title { font-size:34px; line-height:1.08; font-weight:760; letter-spacing:-.045em; margin:10px 0 8px 0; color:var(--text); }
 .hero-pill {
-  background:rgba(255,255,255,.06); border:1px solid var(--border); color:#e8ecf4;
-  padding:10px 14px; border-radius:999px; font-weight:800; white-space:nowrap;
+  background:var(--panel); border:1px solid var(--border); color:var(--muted);
+  padding:9px 12px; border-radius:12px; font-weight:650; white-space:nowrap;
 }
-.sub-tabs { display:flex; gap:30px; align-items:center; color:#a9b0bd; font-weight:800; margin:8px 0 18px 0; }
-.sub-tabs span { opacity:.76; }
-.sub-tabs span:first-child { color:white; opacity:1; position:relative; }
-.sub-tabs span:first-child:after { content:""; position:absolute; height:3px; width:44px; left:0; bottom:-13px; background:linear-gradient(90deg,var(--red),var(--red-2)); border-radius:99px; }
+.sub-tabs { display:flex; gap:22px; align-items:center; color:var(--muted); font-weight:650; margin:8px 0 18px 0; }
+.sub-tabs span { opacity:1; }
+.sub-tabs span:first-child { color:var(--text); opacity:1; position:relative; }
+.sub-tabs span:first-child:after { content:""; position:absolute; height:2px; width:36px; left:0; bottom:-10px; background:var(--text); border-radius:99px; }
 .dj-card, div[data-testid="stMetric"], [data-testid="stDataFrame"] {
-  background:linear-gradient(145deg,rgba(30,39,51,.95),rgba(14,20,29,.98));
-  border:1px solid var(--border); border-radius:22px; padding:20px;
-  box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.04);
+  background:var(--panel);
+  border:1px solid var(--border); border-radius:16px; padding:17px;
+  box-shadow:var(--shadow);
 }
-.dj-card-sm { min-height:126px; }
-.dj-card:hover { border-color:rgba(255,255,255,.13); transform:translateY(-1px); transition:.18s ease; }
-.dj-label { color:var(--muted); font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; }
-.dj-value { font-size:28px; font-weight:950; letter-spacing:-.035em; color:white; }
-.dj-sub { color:#d7dbe3; font-size:14px; margin-top:4px; }
+.dj-card-sm { min-height:112px; }
+.dj-card:hover { border-color:var(--border-strong); transform:none; transition:.15s ease; }
+.dj-label { color:var(--muted); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:7px; }
+.dj-value { font-size:26px; font-weight:760; letter-spacing:-.035em; color:var(--text); }
+.dj-sub { color:var(--muted); font-size:13px; margin-top:4px; }
 .dj-icon {
-  width:52px; height:52px; border-radius:17px; display:flex; align-items:center; justify-content:center;
-  background:rgba(255,66,72,.16); color:var(--red); font-size:30px; font-weight:950;
+  width:46px; height:46px; border-radius:13px; display:flex; align-items:center; justify-content:center;
+  background:var(--accent-soft); color:var(--text); font-size:25px; font-weight:760;
 }
-.dj-icon.yellow { background:rgba(255,189,46,.16); color:var(--yellow); }
-.metric-row { display:flex; align-items:center; gap:16px; }
+.dj-icon.yellow { background:#fff7e6; color:var(--yellow); }
+.metric-row { display:flex; align-items:center; gap:14px; }
 .right-panel {
-  background:linear-gradient(180deg,rgba(30,39,51,.82),rgba(12,18,26,.92));
-  border:1px solid var(--border); border-radius:28px; padding:24px;
-  min-height:760px; box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.04);
+  background:var(--panel);
+  border:1px solid var(--border); border-radius:20px; padding:20px;
+  min-height:720px; box-shadow:var(--shadow);
 }
-.profile-name { font-size:31px; font-weight:950; line-height:1.08; letter-spacing:-.04em; color:#fff; }
-.verify { color:#e5e9f1; margin-top:12px; }
-.profile-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:28px 0; }
-.profile-grid .num { font-size:20px; font-weight:950; color:white; }
-.balance-card { min-height:215px; display:flex; flex-direction:column; justify-content:center; }
-.balance-value { font-size:33px; font-weight:950; margin:16px 0 8px; letter-spacing:-.04em; }
-.section-title { font-size:20px; font-weight:950; letter-spacing:-.03em; margin:10px 0 14px; color:#fff; }
+.profile-name { font-size:28px; font-weight:760; line-height:1.08; letter-spacing:-.04em; color:var(--text); }
+.verify { color:var(--muted); margin-top:10px; }
+.profile-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:11px; margin:23px 0; }
+.profile-grid .num { font-size:18px; font-weight:760; color:var(--text); }
+.balance-card { min-height:190px; display:flex; flex-direction:column; justify-content:center; }
+.balance-value { font-size:30px; font-weight:760; margin:14px 0 7px; letter-spacing:-.04em; color:var(--text); }
+.section-title { font-size:19px; font-weight:740; letter-spacing:-.03em; margin:8px 0 13px; color:var(--text); }
 .muted { color:var(--muted); font-size:13px; }
 .pos { color:var(--green)!important; } .neg { color:var(--red)!important; } .yellow { color:var(--yellow)!important; }
-.calendar-cell { border:1px solid rgba(255,255,255,.075); border-radius:15px; padding:10px; min-height:92px; overflow:hidden; background:rgba(255,255,255,.04); }
-.calendar-day { font-weight:950; color:white; } .calendar-pnl { font-weight:950; font-size:13px; } .small-platform { font-size:10px; line-height:1.15; opacity:.95; }
+.calendar-cell { border:1px solid var(--border); border-radius:13px; padding:9px; min-height:88px; overflow:hidden; background:var(--panel-soft); }
+.calendar-day { font-weight:760; color:var(--text); } .calendar-pnl { font-weight:740; font-size:13px; } .small-platform { font-size:10px; line-height:1.15; opacity:.95; }
 [data-testid="stDataFrame"] { padding:0!important; overflow:hidden; }
-.stDataFrame iframe { border-radius:18px; }
+.stDataFrame iframe { border-radius:14px; }
 .stButton > button, .stDownloadButton > button {
-  border-radius:15px!important; border:1px solid rgba(255,66,72,.34)!important;
-  background:linear-gradient(135deg,#ff4248,#ff7042)!important; color:white!important; font-weight:950!important; min-height:44px;
-  box-shadow:0 14px 35px rgba(255,66,72,.18);
+  border-radius:11px!important; border:1px solid #111!important;
+  background:#111!important; color:white!important; font-weight:700!important; min-height:40px;
+  box-shadow:none!important;
 }
-.stButton > button:hover, .stDownloadButton > button:hover { border-color:rgba(255,255,255,.28)!important; transform:translateY(-1px); }
+.stButton > button:hover, .stDownloadButton > button:hover { border-color:#333!important; background:#333!important; transform:none; }
 div[data-baseweb="select"] > div, input, textarea {
-  border-radius:15px!important; background:rgba(255,255,255,.045)!important; border-color:rgba(255,255,255,.085)!important; color:white!important;
+  border-radius:11px!important; background:var(--panel)!important; border-color:var(--border)!important; color:var(--text)!important;
+  box-shadow:none!important;
 }
 [data-testid="stFileUploader"] {
-  background:linear-gradient(145deg,rgba(30,39,51,.86),rgba(14,20,29,.92));
-  border:1px dashed rgba(255,255,255,.16); border-radius:22px; padding:18px;
+  background:var(--panel); border:1px dashed var(--border-strong); border-radius:16px; padding:16px;
 }
-[data-testid="stMetric"] label { color:var(--muted)!important; font-weight:800!important; }
-[data-testid="stMetricValue"] { color:#fff!important; font-weight:950!important; }
-hr { border-color:rgba(255,255,255,.075)!important; }
-.streamlit-expanderHeader { background:rgba(255,255,255,.045)!important; border-radius:15px!important; }
+[data-testid="stMetric"] label { color:var(--muted)!important; font-weight:650!important; }
+[data-testid="stMetricValue"] { color:var(--text)!important; font-weight:760!important; }
+hr { border-color:var(--border)!important; }
+.streamlit-expanderHeader { background:var(--panel)!important; border:1px solid var(--border)!important; border-radius:12px!important; }
+.stTabs [data-baseweb="tab-list"] { gap:8px; border-bottom:1px solid var(--border); }
+.stTabs [data-baseweb="tab"] { border-radius:10px 10px 0 0; color:var(--muted); font-weight:650; }
+.stTabs [aria-selected="true"] { background:var(--panel); color:var(--text); }
 @media (max-width:1100px) { .right-panel{min-height:auto;} .search-pill{min-width:240px;} .page-title{font-size:31px;} }
 @media (max-width:800px) { .top-nav,.top-tabs,.sub-tabs { flex-wrap:wrap; } .search-pill{min-width:100%;} .page-title{font-size:28px;} .profile-grid{grid-template-columns:1fr;} }
 </style>
@@ -894,7 +893,7 @@ def main():
                 )
                 st.write("")
                 donut_fig = go.Figure(data=[go.Pie(values=[max(positive,0), abs(min(negative,0))], labels=["Profits", "Losses"], hole=.58, marker=dict(colors=["#ffbd2f", "#ff454b"]))])
-                donut_fig.update_layout(height=210, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#f4f6fb", showlegend=False)
+                donut_fig.update_layout(height=210, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#171717", showlegend=False)
                 st.markdown('<div class="dj-card">', unsafe_allow_html=True)
                 st.plotly_chart(donut_fig, width="stretch", config={"displayModeBar": False})
                 st.markdown(f"<div style='text-align:center;margin-top:-96px;margin-bottom:54px;'><div class='dj-value'>{money(pnl)}</div><div class='muted'>Received</div></div></div>", unsafe_allow_html=True)
@@ -908,7 +907,7 @@ def main():
                         sc["weekday"] = sc["dt"].dt.day_name().str[:3]
                         sc["platform"] = sc["broker"].map(broker_platform_name)
                         fig = px.scatter(sc, x="weekday", y="realized_pl", size=sc["realized_pl"].abs().clip(lower=8), color="platform", color_discrete_map={"IBKR":"#ff454b","NinjaTrader":"#ffbd2f","Wealthsimple":"#6ea8ff","Other":"#a3abb8"}, title=None)
-                        fig.update_layout(height=330, margin=dict(l=10,r=10,t=8,b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(255,255,255,.02)", font_color="#d6dbe6", legend=dict(orientation="h", y=-.18), xaxis=dict(gridcolor="rgba(255,255,255,.06)"), yaxis=dict(gridcolor="rgba(255,255,255,.06)"))
+                        fig.update_layout(height=330, margin=dict(l=10,r=10,t=8,b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(250,250,250,1)", font_color="#171717", legend=dict(orientation="h", y=-.18), xaxis=dict(gridcolor="rgba(0,0,0,.07)"), yaxis=dict(gridcolor="rgba(0,0,0,.07)"))
                         st.markdown('<div class="dj-card">', unsafe_allow_html=True)
                         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
                         st.markdown('</div>', unsafe_allow_html=True)
@@ -925,7 +924,7 @@ def main():
                     if not daily.empty:
                         colors = ["#ff454b" if v < 0 else "#ffbd2f" for v in daily["realized_pl"]]
                         fig = go.Figure(go.Bar(x=daily["realized_pl"], y=[str(d) for d in daily["date"]], orientation="h", marker_color=colors, width=.22))
-                        fig.update_layout(height=330, margin=dict(l=8,r=8,t=8,b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(255,255,255,.015)", font_color="#d6dbe6", xaxis=dict(gridcolor="rgba(255,255,255,.06)"), yaxis=dict(gridcolor="rgba(255,255,255,.0)"))
+                        fig.update_layout(height=330, margin=dict(l=8,r=8,t=8,b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(250,250,250,1)", font_color="#171717", xaxis=dict(gridcolor="rgba(0,0,0,.07)"), yaxis=dict(gridcolor="rgba(255,255,255,.0)"))
                         st.markdown('<div class="dj-card">', unsafe_allow_html=True)
                         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
                         st.markdown('</div>', unsafe_allow_html=True)
@@ -939,7 +938,7 @@ def main():
                     fig = go.Figure()
                     fig.add_trace(go.Bar(x=chart_df["date"].tail(12), y=chart_df["realized_pl"].tail(12), marker_color="#ff454b", name="P&L"))
                     fig.add_trace(go.Scatter(x=chart_df["date"].tail(12), y=chart_df["equity"].tail(12), mode="lines+markers", line=dict(color="white", width=2), marker=dict(size=7), name="Equity"))
-                    fig.update_layout(height=330, margin=dict(l=8,r=8,t=8,b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(255,255,255,.015)", font_color="#d6dbe6", showlegend=False, xaxis=dict(gridcolor="rgba(255,255,255,.04)"), yaxis=dict(gridcolor="rgba(255,255,255,.06)"))
+                    fig.update_layout(height=330, margin=dict(l=8,r=8,t=8,b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(250,250,250,1)", font_color="#171717", showlegend=False, xaxis=dict(gridcolor="rgba(0,0,0,.06)"), yaxis=dict(gridcolor="rgba(0,0,0,.07)"))
                     st.markdown('<div class="dj-card">', unsafe_allow_html=True)
                     st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
                     st.markdown('</div>', unsafe_allow_html=True)
@@ -979,7 +978,7 @@ def main():
             if not df.empty:
                 weekly = df.dropna(subset=["date"]).groupby("date")["realized_pl"].sum().tail(7).reset_index()
                 fig = go.Figure(go.Scatter(x=weekly["date"], y=weekly["realized_pl"], mode="lines", line=dict(color="#ff454b", width=3)))
-                fig.update_layout(height=180, margin=dict(l=0,r=0,t=10,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#d6dbe6", xaxis=dict(visible=False), yaxis=dict(visible=False))
+                fig.update_layout(height=180, margin=dict(l=0,r=0,t=10,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#171717", xaxis=dict(visible=False), yaxis=dict(visible=False))
                 st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
             st.markdown('</div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
