@@ -29,29 +29,30 @@ st.set_page_config(page_title="Trade Journal", page_icon="📈", layout="wide")
 
 CUSTOM_CSS = """
 <style>
-.block-container { padding-top: 1.2rem; padding-bottom: 3rem; }
-.metric-card {
-    background: linear-gradient(180deg, rgba(18,26,47,.95), rgba(15,21,40,.95));
-    border: 1px solid rgba(148,163,184,.16);
-    border-radius: 18px;
-    padding: 16px;
-    min-height: 96px;
+:root { --border:rgba(148,163,184,.18); --muted:#94a3b8; --text:#e5eefb; --green:#22c55e; --red:#ef4444; }
+html, body, [data-testid="stAppViewContainer"] {
+    background: radial-gradient(circle at top left, rgba(124,156,255,.16), transparent 32%), linear-gradient(180deg,#07111f,#0b1020) !important;
+    color: var(--text) !important;
 }
-.metric-label { color: #94a3b8; font-size: 13px; }
-.metric-value { font-size: 28px; font-weight: 900; margin-top: 4px; }
-.pos { color: #22c55e; }
-.neg { color: #ef4444; }
-.muted { color: #94a3b8; font-size: 13px; }
-.calendar-cell {
-    border: 1px solid rgba(148,163,184,.16);
-    border-radius: 12px;
-    padding: 8px;
-    min-height: 92px;
-    overflow: hidden;
-}
-.calendar-day { font-weight: 900; }
-.calendar-pnl { font-weight: 900; font-size: 14px; }
-.small-platform { font-size: 10px; line-height: 1.15; }
+.block-container { padding-top:1.1rem; padding-bottom:3rem; max-width:1500px; }
+[data-testid="stSidebar"] { background:linear-gradient(180deg,rgba(7,17,31,.98),rgba(10,15,30,.98)); border-right:1px solid var(--border); }
+[data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p { color:var(--text) !important; }
+.app-hero { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; padding:22px 24px; margin:0 0 18px 0; border:1px solid var(--border); border-radius:24px; background:linear-gradient(135deg,rgba(124,156,255,.18),rgba(34,197,94,.08)),rgba(15,23,42,.78); box-shadow:0 18px 60px rgba(0,0,0,.26); }
+.app-title { font-size:32px; font-weight:950; line-height:1.05; letter-spacing:-.03em; margin:0; }
+.app-subtitle { color:var(--muted); font-size:14px; margin-top:8px; }
+.hero-pill { display:inline-flex; align-items:center; gap:8px; padding:9px 12px; border:1px solid var(--border); border-radius:999px; background:rgba(255,255,255,.055); color:#dbeafe; font-size:13px; font-weight:800; white-space:nowrap; }
+.metric-card { background:linear-gradient(180deg,rgba(18,26,47,.96),rgba(15,21,40,.98)); border:1px solid var(--border); border-radius:20px; padding:18px; min-height:104px; box-shadow:0 12px 32px rgba(0,0,0,.20); }
+.metric-label { color:var(--muted); font-size:13px; font-weight:700; }
+.metric-value { font-size:30px; font-weight:950; margin-top:5px; letter-spacing:-.02em; }
+.section-title { font-size:22px; font-weight:900; letter-spacing:-.02em; margin:4px 0 10px 0; }
+.pos { color:var(--green) !important; } .neg { color:var(--red) !important; } .muted { color:var(--muted); font-size:13px; }
+.calendar-cell { border:1px solid rgba(148,163,184,.16); border-radius:14px; padding:9px; min-height:98px; overflow:hidden; box-shadow:inset 0 1px 0 rgba(255,255,255,.04); }
+.calendar-day { font-weight:950; color:#e5eefb; } .calendar-pnl { font-weight:950; font-size:14px; } .small-platform { font-size:10px; line-height:1.15; opacity:.95; }
+[data-testid="stDataFrame"] { border:1px solid var(--border); border-radius:18px; overflow:hidden; box-shadow:0 12px 32px rgba(0,0,0,.12); }
+.stButton > button, .stDownloadButton > button { border-radius:14px !important; border:1px solid rgba(124,156,255,.34) !important; background:linear-gradient(135deg,#5b8cff,#7c5cff) !important; color:white !important; font-weight:850 !important; min-height:42px; }
+div[data-baseweb="select"] > div, input, textarea { border-radius:14px !important; }
+hr { border-color:rgba(148,163,184,.14) !important; }
+@media (max-width:760px) { .app-hero { flex-direction:column; padding:18px; } .app-title { font-size:26px; } .metric-value { font-size:24px; } }
 </style>
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
@@ -364,8 +365,29 @@ def render_metric(label, value, klass=""):
 
 def money(x):
     x = to_float(x)
-    sign = "+" if x > 0 else "" 
+    sign = "+" if x > 0 else ""
     return f"{sign}{x:,.2f}"
+
+
+def render_hero(title, subtitle="", portfolio_name=None):
+    right = f'<div class="hero-pill">📁 {portfolio_name}</div>' if portfolio_name else ''
+    html = f"""
+    <div class="app-hero">
+        <div>
+            <div class="app-title">{title}</div>
+            <div class="app-subtitle">{subtitle}</div>
+        </div>
+        {right}
+    </div>
+    """
+    st.markdown(html, unsafe_allow_html=True)
+
+
+def section_heading(title, subtitle=""):
+    html = f'<div class="section-title">{title}</div>'
+    if subtitle:
+        html += f'<div class="muted">{subtitle}</div>'
+    st.markdown(html, unsafe_allow_html=True)
 
 
 def generate_tomorrow_plan(df):
@@ -468,20 +490,33 @@ def import_one_csv_path(user_id, portfolio_id, path, source, file_hash_value=Non
 
 
 def render_dropbox_import_page(user_id, portfolio_id):
-    st.title("☁️ Dropbox folder auto-import")
-    st.caption("Cloud-friendly replacement for local folder watching. Put broker CSV exports in a Dropbox folder, then scan/import them from Streamlit.")
+    render_hero("☁️ Dropbox auto-import", "Cloud-friendly folder import for broker CSV exports.")
 
     token = get_secret_value("dropbox.access_token", "DROPBOX_ACCESS_TOKEN")
+    app_key = get_secret_value("dropbox.app_key", "DROPBOX_APP_KEY")
+    app_secret = get_secret_value("dropbox.app_secret", "DROPBOX_APP_SECRET")
+    refresh_token = get_secret_value("dropbox.refresh_token", "DROPBOX_REFRESH_TOKEN")
     default_folder = get_secret_value("dropbox.folder", "DROPBOX_FOLDER", default="/TradeJournalExports")
+    has_dropbox_auth = bool(refresh_token and app_key and app_secret) or bool(token)
 
-    with st.expander("How to configure Streamlit secrets", expanded=not bool(token)):
+    with st.expander("How to configure Streamlit secrets", expanded=not has_dropbox_auth):
         st.markdown(
             """
-Add this in **Streamlit Cloud → App settings → Secrets**:
+Recommended production setup uses a **Dropbox refresh token**:
 
 ```toml
 [dropbox]
-access_token = "YOUR_DROPBOX_ACCESS_TOKEN"
+app_key = "YOUR_DROPBOX_APP_KEY"
+app_secret = "YOUR_DROPBOX_APP_SECRET"
+refresh_token = "YOUR_DROPBOX_REFRESH_TOKEN"
+folder = "/TradeJournalExports"
+```
+
+A temporary access token can still work for quick tests, but it may expire:
+
+```toml
+[dropbox]
+access_token = "SHORT_LIVED_ACCESS_TOKEN"
 folder = "/TradeJournalExports"
 ```
 
@@ -490,13 +525,26 @@ Then export/download your IBKR, Wealthsimple, or NinjaTrader CSVs into that Drop
         )
 
     folder = st.text_input("Dropbox folder path", value=default_folder or "/TradeJournalExports")
-    st.write("Status:", "✅ Dropbox token found" if token else "❌ Missing Dropbox token in secrets")
+    if refresh_token and app_key and app_secret:
+        status = "✅ Dropbox refresh-token auth configured"
+    elif token:
+        status = "⚠️ Temporary Dropbox access token found; it may expire"
+    else:
+        status = "❌ Missing Dropbox credentials in secrets"
+    st.write("Status:", status)
 
-    if st.button("Scan Dropbox Now", type="primary", disabled=not bool(token)):
+    if st.button("Scan Dropbox Now", type="primary", disabled=not has_dropbox_auth):
         with st.spinner("Scanning Dropbox and importing new CSV files..."):
             try:
                 download_dir = UPLOAD_DIR / "dropbox"
-                downloaded = download_new_csvs(token, folder, download_dir)
+                downloaded = download_new_csvs(
+                    folder,
+                    download_dir,
+                    access_token=token,
+                    app_key=app_key,
+                    app_secret=app_secret,
+                    refresh_token=refresh_token,
+                )
                 if not downloaded:
                     st.info("No CSV files found in that Dropbox folder.")
                     return
@@ -534,7 +582,7 @@ Then export/download your IBKR, Wealthsimple, or NinjaTrader CSVs into that Drop
     st.info("Tip: this simple version scans when you click the button. On Streamlit Cloud, true background jobs are not reliable; for scheduled scans, deploy the same logic as a cron job on Render/Railway/GitHub Actions, or add Dropbox webhooks later.")
 
 def render_monthly_calendar(df):
-    st.subheader("📅 Monthly P&L Calendar")
+    section_heading("📅 Monthly P&L Calendar", "Calendar uses trade date, not settlement date. Platform totals are shown separately.")
     if df.empty or "date" not in df:
         st.info("No dated trades yet.")
         return
@@ -601,7 +649,8 @@ def render_monthly_calendar(df):
 
 def main():
     init_db()
-    st.sidebar.title("Trade Journal")
+    st.sidebar.markdown("### 📈 Trade Journal")
+    st.sidebar.caption("Trading analytics, imports, and platform dashboards")
     user_email = st.sidebar.text_input("User email", value=st.session_state.get("email", "streamlit@local"))
     st.session_state["email"] = user_email
     user_id = get_or_create_user(user_email)
@@ -616,13 +665,17 @@ def main():
     if st.sidebar.button("Add portfolio") and new_portfolio.strip():
         get_or_create_portfolio(user_id, new_portfolio.strip())
         st.rerun()
-    st.sidebar.caption(f"Portfolio: {selected_name}")
-    page = st.sidebar.radio("Page", ["Dashboard", "Import", "Dropbox auto-import", "Trades", "Monthly", "Export", "Folder import notes"])
+    st.sidebar.markdown(f"**Current portfolio:** `{selected_name}`")
+    st.sidebar.divider()
+    page = st.sidebar.radio(
+        "Navigation",
+        ["Dashboard", "Import", "Dropbox auto-import", "Trades", "Monthly", "Export", "Folder import notes"],
+        label_visibility="collapsed",
+    )
     df = load_trades_df(user_id, portfolio_id)
 
     if page == "Dashboard":
-        st.title("📈 Trade Journal Dashboard")
-        st.caption(f"Current portfolio: {selected_name}")
+        render_hero("📈 Trade Journal Dashboard", "Clean view of your P&L, calendar, platforms, and trading plan.", selected_name)
         pnl = df["realized_pl"].sum() if not df.empty else 0
         wins = (df["realized_pl"] > 0).sum() if not df.empty else 0
         trade_count = len(df)
@@ -633,7 +686,7 @@ def main():
         c3.metric("Win Rate", f"{win_rate:.1f}%")
         c4.metric("Platforms", df["broker"].nunique() if not df.empty else 0)
         render_monthly_calendar(df)
-        st.subheader("📅 Tomorrow Trading Plan")
+        section_heading("📅 Tomorrow Trading Plan", "Rules generated from your own trading journal.")
         plan = generate_tomorrow_plan(df)
         p1, p2, p3, p4 = st.columns(4)
         p1.metric("Mode", plan["mode"])
@@ -647,7 +700,7 @@ def main():
             st.plotly_chart(px.line(chart_df, x="date", y="equity", title="Equity Curve"), use_container_width=True)
 
     elif page == "Import":
-        st.title("📤 Import trades")
+        render_hero("📤 Import trades", "Upload IBKR, Wealthsimple, NinjaTrader, or supported CSV exports.", selected_name)
         files = st.file_uploader("Upload CSV files", type=["csv"], accept_multiple_files=True)
         if st.button("Import uploaded files", type="primary"):
             if not files:
@@ -678,7 +731,7 @@ def main():
         render_dropbox_import_page(user_id, portfolio_id)
 
     elif page == "Trades":
-        st.title("📋 Trades")
+        render_hero("📋 Trades", "Compact table of your imported trades.", selected_name)
         if df.empty:
             st.info("No trades yet.")
         else:
@@ -686,7 +739,7 @@ def main():
             st.dataframe(df[[c for c in cols if c in df.columns]], use_container_width=True, hide_index=True)
 
     elif page == "Monthly":
-        st.title("📊 Monthly analysis")
+        render_hero("📊 Monthly analysis", "Monthly totals, fees, and trade counts.", selected_name)
         if df.empty:
             st.info("No trades yet.")
         else:
@@ -695,7 +748,7 @@ def main():
             st.plotly_chart(px.bar(monthly, x="month", y="realized_pl", title="Monthly P&L"), use_container_width=True)
 
     elif page == "Export":
-        st.title("⬇️ Export")
+        render_hero("⬇️ Export", "Download your filtered journal data.", selected_name)
         if df.empty:
             st.info("Nothing to export.")
         else:
@@ -703,7 +756,7 @@ def main():
             st.download_button("Download trades CSV", csv, "trades_export.csv", "text/csv")
 
     else:
-        st.title("📁 Folder import notes")
+        render_hero("📁 Folder import notes", "Local folder scanning versus cloud deployment.", selected_name)
         st.info("Streamlit Cloud cannot watch folders on your local computer. For deployed use, upload CSVs on the Import page. Folder auto-import only works when running Streamlit locally on the same machine as the export folders.")
         folder = st.text_input("Local folder to scan (local-only)")
         if st.button("Scan local folder") and folder:

@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import hashlib
-import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import Optional
 
 import dropbox
 from dropbox.files import FileMetadata
@@ -20,10 +19,39 @@ class DropboxCSVFile:
     local_path: Path
 
 
-def get_dropbox_client(access_token: str) -> dropbox.Dropbox:
-    if not access_token:
-        raise ValueError("Missing Dropbox access token.")
-    return dropbox.Dropbox(access_token, timeout=60)
+def get_dropbox_client(
+    access_token: str | None = None,
+    app_key: str | None = None,
+    app_secret: str | None = None,
+    refresh_token: str | None = None,
+) -> dropbox.Dropbox:
+    """Create a Dropbox client.
+
+    Preferred production setup uses app_key + app_secret + refresh_token.
+    A plain access_token is still supported for quick local testing, but Dropbox
+    access tokens are usually short-lived and can expire.
+    """
+    access_token = (access_token or "").strip()
+    app_key = (app_key or "").strip()
+    app_secret = (app_secret or "").strip()
+    refresh_token = (refresh_token or "").strip()
+
+    if refresh_token:
+        if not app_key or not app_secret:
+            raise ValueError("Dropbox refresh token requires DROPBOX_APP_KEY and DROPBOX_APP_SECRET.")
+        return dropbox.Dropbox(
+            oauth2_refresh_token=refresh_token,
+            app_key=app_key,
+            app_secret=app_secret,
+            timeout=60,
+        )
+
+    if access_token:
+        return dropbox.Dropbox(access_token, timeout=60)
+
+    raise ValueError(
+        "Missing Dropbox credentials. Use DROPBOX_APP_KEY, DROPBOX_APP_SECRET, and DROPBOX_REFRESH_TOKEN in Streamlit secrets."
+    )
 
 
 def list_csv_files(dbx: dropbox.Dropbox, folder_path: str) -> list[FileMetadata]:
@@ -57,7 +85,19 @@ def download_file(dbx: dropbox.Dropbox, metadata: FileMetadata, download_dir: Pa
     )
 
 
-def download_new_csvs(access_token: str, folder_path: str, download_dir: Path) -> list[DropboxCSVFile]:
-    dbx = get_dropbox_client(access_token)
+def download_new_csvs(
+    folder_path: str,
+    download_dir: Path,
+    access_token: str | None = None,
+    app_key: str | None = None,
+    app_secret: str | None = None,
+    refresh_token: str | None = None,
+) -> list[DropboxCSVFile]:
+    dbx = get_dropbox_client(
+        access_token=access_token,
+        app_key=app_key,
+        app_secret=app_secret,
+        refresh_token=refresh_token,
+    )
     files = list_csv_files(dbx, folder_path)
     return [download_file(dbx, f, download_dir) for f in files]

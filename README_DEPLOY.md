@@ -1,7 +1,5 @@
 # Streamlit Trade Journal with Dropbox Auto-Import
 
-This package converts your trade journal into a Streamlit app and adds a cloud-friendly Dropbox CSV import workflow.
-
 ## Run locally
 
 ```bash
@@ -9,42 +7,32 @@ pip install -r requirements.txt
 streamlit run streamlit_app.py
 ```
 
-## Deploy to Streamlit Community Cloud
+## Dropbox secrets
 
-1. Create a GitHub repository.
-2. Upload these files.
-3. Deploy `streamlit_app.py` in Streamlit Cloud.
-4. Add secrets in Streamlit Cloud → App settings → Secrets:
+Use a Dropbox refresh token for deployment. Add this in Streamlit Cloud → App settings → Secrets:
 
 ```toml
 [dropbox]
-access_token = "YOUR_DROPBOX_ACCESS_TOKEN"
+app_key = "YOUR_DROPBOX_APP_KEY"
+app_secret = "YOUR_DROPBOX_APP_SECRET"
+refresh_token = "YOUR_DROPBOX_REFRESH_TOKEN"
 folder = "/TradeJournalExports"
 ```
 
-Do **not** commit your real Dropbox token to GitHub.
+A plain access token can work only for quick testing because Dropbox access tokens are usually short-lived.
 
-## Dropbox workflow
+## How to get a Dropbox refresh token
 
-1. Create a Dropbox folder, for example `/TradeJournalExports`.
-2. Put broker CSV exports in that folder:
-   - IBKR CSV
-   - Wealthsimple CSV
-   - NinjaTrader Performance CSV
-3. In the Streamlit app, open **Dropbox auto-import**.
-4. Click **Scan Dropbox Now**.
-5. The app downloads new CSVs, detects the broker format, imports trades, and skips files already imported by Dropbox content hash.
+1. Create a Dropbox app in the Dropbox developer console.
+2. Give it file access for the folder/app scope you want.
+3. Generate an OAuth authorization URL with `token_access_type=offline`.
+4. Authorize the app.
+5. Exchange the returned authorization code for a refresh token.
+6. Put the refresh token, app key, and app secret into Streamlit secrets.
 
-## Important database note
+Once configured, go to the Dropbox auto-import page and click **Scan Dropbox Now**.
 
-This package still uses SQLite (`trades_streamlit.db`). SQLite is fine for local testing and demos, but Streamlit Cloud file storage can reset. For a production trading journal, migrate the database to PostgreSQL/Supabase.
 
-## Scheduling note
+## Modern UI refresh
 
-This version uses a manual **Scan Dropbox Now** button because Streamlit Cloud is not a background-worker platform. For true scheduled import, use one of these:
-
-- GitHub Actions cron calling a small Python importer
-- Render/Railway scheduled worker
-- Dropbox webhook receiver on a web backend
-
-The Dropbox import logic is isolated in `dropbox_import.py`, so it can be reused later in a cron/worker.
+This version includes a cleaner Streamlit UI with a polished sidebar, hero headers, KPI cards, calendar styling, and Dropbox auto-import controls.
