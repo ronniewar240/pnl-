@@ -675,7 +675,7 @@ Then export/download your IBKR, Wealthsimple, or NinjaTrader CSVs into that Drop
                         })
 
                 st.subheader("Scan results")
-                st.dataframe(pd.DataFrame(results), use_container_width=True, hide_index=True)
+                st.dataframe(pd.DataFrame(results), width="stretch", hide_index=True)
                 st.success(f"Checked {len(downloaded)} file(s). Inserted {sum(r.get('inserted', 0) for r in results)} trade(s).")
             except Exception as e:
                 st.error(f"Dropbox scan failed: {e}")
@@ -815,9 +815,9 @@ def main():
                 donut_fig = go.Figure(data=[go.Pie(values=[max(positive,0), abs(min(negative,0))], labels=["Profits", "Losses"], hole=.58, marker=dict(colors=["#ffbd2f", "#ff454b"]))])
                 donut_fig.update_layout(height=210, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#f4f6fb", showlegend=False)
                 st.markdown('<div class="dj-card">', unsafe_allow_html=True)
-                st.plotly_chart(donut_fig, use_container_width=True, config={"displayModeBar": False})
+                st.plotly_chart(donut_fig, width="stretch", config={"displayModeBar": False})
                 st.markdown(f"<div style='text-align:center;margin-top:-96px;margin-bottom:54px;'><div class='dj-value'>{money(pnl)}</div><div class='muted'>Received</div></div></div>", unsafe_allow_html=True)
-            with row1[2:]:
+            with row1[2]:
                 section_heading("My Performance", "Platform scatter and recent trading flow")
                 if not df.empty:
                     sc = df.copy()
@@ -829,7 +829,7 @@ def main():
                         fig = px.scatter(sc, x="weekday", y="realized_pl", size=sc["realized_pl"].abs().clip(lower=8), color="platform", color_discrete_map={"IBKR":"#ff454b","NinjaTrader":"#ffbd2f","Wealthsimple":"#6ea8ff","Other":"#a3abb8"}, title=None)
                         fig.update_layout(height=330, margin=dict(l=10,r=10,t=8,b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(255,255,255,.02)", font_color="#d6dbe6", legend=dict(orientation="h", y=-.18), xaxis=dict(gridcolor="rgba(255,255,255,.06)"), yaxis=dict(gridcolor="rgba(255,255,255,.06)"))
                         st.markdown('<div class="dj-card">', unsafe_allow_html=True)
-                        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+                        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
                         st.markdown('</div>', unsafe_allow_html=True)
                     else:
                         dj_panel("My Performance", "<div class='muted'>Import dated trades to populate this chart.</div>")
@@ -846,7 +846,7 @@ def main():
                         fig = go.Figure(go.Bar(x=daily["realized_pl"], y=[str(d) for d in daily["date"]], orientation="h", marker_color=colors, width=.22))
                         fig.update_layout(height=330, margin=dict(l=8,r=8,t=8,b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(255,255,255,.015)", font_color="#d6dbe6", xaxis=dict(gridcolor="rgba(255,255,255,.06)"), yaxis=dict(gridcolor="rgba(255,255,255,.0)"))
                         st.markdown('<div class="dj-card">', unsafe_allow_html=True)
-                        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+                        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
                         st.markdown('</div>', unsafe_allow_html=True)
                 else:
                     dj_panel("Account Overview", "<div class='muted'>No data yet.</div>")
@@ -860,7 +860,7 @@ def main():
                     fig.add_trace(go.Scatter(x=chart_df["date"].tail(12), y=chart_df["equity"].tail(12), mode="lines+markers", line=dict(color="white", width=2), marker=dict(size=7), name="Equity"))
                     fig.update_layout(height=330, margin=dict(l=8,r=8,t=8,b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(255,255,255,.015)", font_color="#d6dbe6", showlegend=False, xaxis=dict(gridcolor="rgba(255,255,255,.04)"), yaxis=dict(gridcolor="rgba(255,255,255,.06)"))
                     st.markdown('<div class="dj-card">', unsafe_allow_html=True)
-                    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+                    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
                     st.markdown('</div>', unsafe_allow_html=True)
                 else:
                     dj_panel("Analytics", "<div class='muted'>No data yet.</div>")
@@ -899,7 +899,7 @@ def main():
                 weekly = df.dropna(subset=["date"]).groupby("date")["realized_pl"].sum().tail(7).reset_index()
                 fig = go.Figure(go.Scatter(x=weekly["date"], y=weekly["realized_pl"], mode="lines", line=dict(color="#ff454b", width=3)))
                 fig.update_layout(height=180, margin=dict(l=0,r=0,t=10,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#d6dbe6", xaxis=dict(visible=False), yaxis=dict(visible=False))
-                st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+                st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
             st.markdown('</div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -940,7 +940,7 @@ def main():
             st.info("No trades yet.")
         else:
             cols = ["id", "broker", "symbol", "trade_datetime", "quantity", "side", "buy_price", "sell_price", "realized_pl", "setup_tag", "journal_note"]
-            st.dataframe(df[[c for c in cols if c in df.columns]], use_container_width=True, hide_index=True)
+            st.dataframe(df[[c for c in cols if c in df.columns]], width="stretch", hide_index=True)
 
     elif page == "Monthly":
         render_hero("📊 Monthly analysis", "Monthly totals, fees, and trade counts.", selected_name)
@@ -948,8 +948,8 @@ def main():
             st.info("No trades yet.")
         else:
             monthly = df.dropna(subset=["month"]).groupby("month").agg(realized_pl=("realized_pl", "sum"), fees=("commission", "sum"), trades=("id", "count")).reset_index()
-            st.dataframe(monthly, use_container_width=True, hide_index=True)
-            st.plotly_chart(px.bar(monthly, x="month", y="realized_pl", title="Monthly P&L"), use_container_width=True)
+            st.dataframe(monthly, width="stretch", hide_index=True)
+            st.plotly_chart(px.bar(monthly, x="month", y="realized_pl", title="Monthly P&L"), width="stretch")
 
     elif page == "Export":
         render_hero("⬇️ Export", "Download your filtered journal data.", selected_name)
