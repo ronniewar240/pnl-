@@ -31,17 +31,22 @@ CUSTOM_CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 :root {
-  --bg:#f8f8f6;
-  --sidebar:#f3f3f0;
-  --panel:#ffffff;
-  --text:#1f1f1f;
-  --muted:#74746f;
-  --border:#e6e4dc;
-  --green:#16834a;
-  --red:#c63d3d;
-  --yellow:#a56a12;
+  --bg:#0c0f14;
+  --sidebar:#11151c;
+  --panel:#151a22;
+  --panel-soft:#10141b;
+  --text:#eef2f7;
+  --muted:#9aa4b2;
+  --border:#252c37;
+  --green:#4ade80;
+  --red:#fb7185;
+  --yellow:#fbbf24;
+  --accent:#8b5cf6;
 }
-html, body, [data-testid="stAppViewContainer"] { background:var(--bg)!important; color:var(--text)!important; }
+html, body, [data-testid="stAppViewContainer"] {
+  background: radial-gradient(circle at top left, rgba(139,92,246,.10), transparent 32%), var(--bg)!important;
+  color:var(--text)!important;
+}
 * { font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 .block-container { max-width:1280px; padding:1.25rem 1.4rem 2.5rem 1.4rem; }
 #MainMenu, footer, header { visibility:hidden; }
@@ -49,32 +54,36 @@ html, body, [data-testid="stAppViewContainer"] { background:var(--bg)!important;
 [data-testid="stSidebar"] * { color:var(--text)!important; }
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p { color:var(--muted)!important; }
 .sidebar-brand { margin:4px 0 18px; }
-.sidebar-title { font-size:18px; font-weight:700; letter-spacing:-.03em; }
+.sidebar-title { font-size:18px; font-weight:700; letter-spacing:-.03em; color:var(--text)!important; }
 .sidebar-sub { color:var(--muted); font-size:12px; margin-top:3px; }
-.portfolio-chip { background:white; border:1px solid var(--border); border-radius:12px; padding:11px 12px; margin:10px 0 14px; }
+.portfolio-chip { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:11px 12px; margin:10px 0 14px; }
 [data-testid="stSidebar"] .stTextInput input,
-[data-testid="stSidebar"] div[data-baseweb="select"] > div { background:white!important; border:1px solid var(--border)!important; border-radius:10px!important; }
+[data-testid="stSidebar"] div[data-baseweb="select"] > div { background:var(--panel)!important; border:1px solid var(--border)!important; border-radius:10px!important; color:var(--text)!important; }
 [data-testid="stSidebar"] [role="radiogroup"] label { border-radius:9px!important; padding:8px 9px!important; margin:1px 0!important; border:1px solid transparent; }
-[data-testid="stSidebar"] [role="radiogroup"] label:hover { background:#e9e8e3!important; }
-[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) { background:white!important; border-color:var(--border)!important; }
-.page-title { font-size:28px; font-weight:700; letter-spacing:-.04em; margin:4px 0 4px; }
+[data-testid="stSidebar"] [role="radiogroup"] label:hover { background:#1b222d!important; }
+[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) { background:var(--panel)!important; border-color:#3a4352!important; }
+.page-title { font-size:28px; font-weight:700; letter-spacing:-.04em; margin:4px 0 4px; color:var(--text)!important; }
 .page-subtitle { color:var(--muted); font-size:14px; margin-bottom:18px; }
-.hero-pill { background:white; border:1px solid var(--border); padding:8px 11px; border-radius:10px; color:var(--muted); font-size:13px; white-space:nowrap; }
-.dj-card, div[data-testid="stMetric"], [data-testid="stDataFrame"] { background:white; border:1px solid var(--border); border-radius:14px; padding:15px; box-shadow:none; }
+.hero-pill { background:var(--panel); border:1px solid var(--border); padding:8px 11px; border-radius:10px; color:var(--muted); font-size:13px; white-space:nowrap; }
+.dj-card, div[data-testid="stMetric"], [data-testid="stDataFrame"] { background:rgba(21,26,34,.96); border:1px solid var(--border); border-radius:14px; padding:15px; box-shadow:none; }
 .dj-card-sm { min-height:92px; }
 .dj-label { color:var(--muted); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; }
-.dj-value { font-size:24px; font-weight:700; letter-spacing:-.03em; }
+.dj-value { font-size:24px; font-weight:700; letter-spacing:-.03em; color:var(--text); }
 .dj-sub, .muted { color:var(--muted); font-size:13px; }
-.section-title { font-size:18px; font-weight:700; letter-spacing:-.03em; margin:8px 0 10px; }
+.section-title { font-size:18px; font-weight:700; letter-spacing:-.03em; margin:8px 0 10px; color:var(--text); }
 .pos { color:var(--green)!important; } .neg { color:var(--red)!important; } .yellow { color:var(--yellow)!important; }
-.calendar-cell { border:1px solid var(--border); border-radius:12px; padding:8px; min-height:78px; overflow:hidden; background:#fbfbfa; }
-.calendar-day { font-weight:700; } .calendar-pnl { font-weight:700; font-size:13px; } .small-platform { font-size:10px; line-height:1.15; opacity:.9; }
+.calendar-cell { border:1px solid var(--border); border-radius:12px; padding:8px; min-height:78px; overflow:hidden; background:#111720; }
+.calendar-day { font-weight:700; color:var(--text); } .calendar-pnl { font-weight:700; font-size:13px; } .small-platform { font-size:10px; line-height:1.15; opacity:.9; }
 [data-testid="stDataFrame"] { padding:0!important; overflow:hidden; }
-.stButton > button, .stDownloadButton > button { border-radius:10px!important; border:1px solid #202020!important; background:#202020!important; color:white!important; font-weight:650!important; min-height:38px; box-shadow:none!important; }
-.stButton > button:hover, .stDownloadButton > button:hover { background:#3a3a3a!important; border-color:#3a3a3a!important; }
-div[data-baseweb="select"] > div, input, textarea { border-radius:10px!important; background:white!important; border-color:var(--border)!important; box-shadow:none!important; }
-[data-testid="stFileUploader"] { background:white; border:1px dashed #cbc8bd; border-radius:14px; padding:14px; }
+.stButton > button, .stDownloadButton > button { border-radius:10px!important; border:1px solid #374151!important; background:#f3f4f6!important; color:#111827!important; font-weight:650!important; min-height:38px; box-shadow:none!important; }
+.stButton > button:hover, .stDownloadButton > button:hover { background:#ffffff!important; border-color:#ffffff!important; }
+div[data-baseweb="select"] > div, input, textarea { border-radius:10px!important; background:var(--panel)!important; border-color:var(--border)!important; color:var(--text)!important; box-shadow:none!important; }
+[data-testid="stFileUploader"] { background:var(--panel); border:1px dashed #3b4350; border-radius:14px; padding:14px; }
+[data-testid="stFileUploader"] * { color:var(--text)!important; }
+[data-testid="stDataFrame"] iframe, .stDataFrame { background:var(--panel)!important; }
 hr { border-color:var(--border)!important; }
+/* Streamlit native alerts/cards */
+[data-testid="stAlert"] { background:var(--panel)!important; border:1px solid var(--border)!important; color:var(--text)!important; }
 @media (max-width:800px) { .page-title{font-size:24px;} .block-container{padding:1rem;} }
 </style>
 """
@@ -776,8 +785,8 @@ def main():
                 chart_df = df.dropna(subset=["date"]).sort_values("date").copy()
                 chart_df["equity"] = chart_df["realized_pl"].cumsum()
                 fig = go.Figure()
-                fig.add_trace(go.Scatter(x=chart_df["date"], y=chart_df["equity"], mode="lines", line=dict(color="#202020", width=2), name="Equity"))
-                fig.update_layout(height=320, margin=dict(l=10,r=10,t=10,b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="#ffffff", font_color="#1f1f1f", xaxis=dict(gridcolor="#eeeeea"), yaxis=dict(gridcolor="#eeeeea"))
+                fig.add_trace(go.Scatter(x=chart_df["date"], y=chart_df["equity"], mode="lines", line=dict(color="#a78bfa", width=2), name="Equity"))
+                fig.update_layout(height=320, margin=dict(l=10,r=10,t=10,b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#eef2f7", xaxis=dict(gridcolor="#252c37"), yaxis=dict(gridcolor="#252c37"))
                 st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
             else:
                 st.info("Import trades to build your equity chart.")
