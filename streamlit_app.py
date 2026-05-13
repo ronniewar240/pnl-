@@ -784,6 +784,130 @@ def record_imported_source_file(user_id, source, file_name, file_hash, batch_id,
     conn.close()
 
 
+def get_import_batches(user_id, portfolio_id):
+    """Return import batches visible to the current user/portfolio.
+
+    Includes normal batches with trades and imported_files rows so stale file-hash
+    records can be removed too.
+    """
+    conn = connect()
+    trade_rows = conn.execute(
+        """
+        SELECT
+            batch_id,
+            MIN(import_file) AS file_name,
+            MIN(broker) AS broker,
+            COUNT(*) AS trade_count,
+            ROUND(SUM(IFNULL(realized_pl, 0)), 2) AS pnl,
+            MIN(substr(trade_datetime, 1, 10)) AS first_trade_date,
+            MAX(substr(trade_datetime, 1, 10)) AS last_trade_date
+        FROM trades
+        WHERE user_id = ?
+          AND portfolio_id = ?
+          AND batch_id IS NOT NULL
+          AND TRIM(batch_id) != ''
+        GROUP BY batch_id
+        ORDER BY MAX(created_at) DESC, batch_id DESC
+        """,
+        (user_id, portfolio_id),
+    ).fetchall()
+
+    file_rows = conn.execute(
+        """
+        SELECT
+            batch_id, source, file_name, parsed_count, inserted_count,
+            skipped_count, status, imported_at
+        FROM imported_files
+        WHERE user_id = ?
+          AND batch_id IS NOT NULL
+          AND TRIM(batch_id) != ''
+        ORDER BY imported_at DESC
+        """,
+        (user_id,),
+    ).fetchall()
+    conn.close()
+
+    batches = {}
+    for r in trade_rows:
+        d = dict(r)
+        batches[d["batch_id"]] = {
+            "batch_id": d["batch_id"],
+            "source": "trades",
+            "file_name": d.get("file_name") or "",
+            "broker": d.get("broker") or "",
+            "trade_count": int(d.get("trade_count") or 0),
+            "pnl": float(d.get("pnl") or 0),
+            "first_trade_date": d.get("first_trade_date") or "",
+            "last_trade_date": d.get("last_trade_date") or "",
+            "parsed_count": None,
+            "inserted_count": None,
+            "skipped_count": None,
+            "status": "",
+            "imported_at": "",
+        }
+
+    for r in file_rows:
+        d = dict(r)
+        bid = d["batch_id"]
+        item = batches.setdefault(bid, {
+            "batch_id": bid,
+            "source": d.get("source") or "",
+            "file_name": d.get("file_name") or "",
+            "broker": "",
+            "trade_count": 0,
+            "pnl": 0.0,
+            "first_trade_date": "",
+            "last_trade_date": "",
+            "parsed_count": d.get("parsed_count"),
+            "inserted_count": d.get("inserted_count"),
+            "skipped_count": d.get("skipped_count"),
+            "status": d.get("status") or "",
+            "imported_at": d.get("imported_at") or "",
+        })
+        item["source"] = d.get("source") or item.get("source") or ""
+        item["file_name"] = d.get("file_name") or item.get("file_name") or ""
+        item["parsed_count"] = d.get("parsed_count")
+        item["inserted_count"] = d.get("inserted_count")
+        item["skipped_count"] = d.get("skipped_count")
+        item["status"] = d.get("status") or item.get("status") or ""
+        item["imported_at"] = d.get("imported_at") or item.get("imported_at") or ""
+
+    return sorted(batches.values(), key=lambda x: x.get("imported_at") or x.get("batch_id") or "", reverse=True)
+
+
+def delete_import_batch(user_id, portfolio_id, batch_id):
+    """Delete one import batch and its file-hash tracking row.
+
+    This lets you delete an old Wealthsimple/NinjaTrader/IBKR batch and re-import
+    the same CSV without the app saying it was already imported.
+    """
+    if not batch_id:
+        return {"trades_deleted": 0, "file_records_deleted": 0}
+
+    conn = connect()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        DELETE FROM trades
+        WHERE user_id = ? AND portfolio_id = ? AND batch_id = ?
+        """,
+        (user_id, portfolio_id, batch_id),
+    )
+    trades_deleted = cur.rowcount
+
+    cur.execute(
+        """
+        DELETE FROM imported_files
+        WHERE user_id = ? AND batch_id = ?
+        """,
+        (user_id, batch_id),
+    )
+    file_records_deleted = cur.rowcount
+    conn.commit()
+    conn.close()
+    return {"trades_deleted": trades_deleted, "file_records_deleted": file_records_deleted}
+
+
 def import_one_csv_path(user_id, portfolio_id, path, source, file_hash_value=None):
     path = Path(path)
     digest = file_hash_value or file_hash(path)
@@ -1139,6 +1263,43 @@ def main():
                         st.success(f"{f.name}: parsed {len(trades)}, inserted {inserted}, skipped {skipped} ({import_type})")
                     except Exception as e:
                         st.error(f"{f.name}: {e}")
+
+        st.divider()
+        section_heading("Delete old import batch")
+        st.caption("Use this before re-importing a corrected Wealthsimple/NinjaTrader/IBKR file. It also clears the saved file hash, so the same CSV can be imported again.")
+        batches = get_import_batches(user_id, portfolio_id)
+        if not batches:
+            st.info("No import batches found for this portfolio.")
+        else:
+            batch_df = pd.DataFrame(batches)
+            show_cols = [
+                "batch_id", "source", "file_name", "broker", "trade_count", "pnl",
+                "first_trade_date", "last_trade_date", "inserted_count", "skipped_count", "imported_at", "status"
+            ]
+            st.dataframe(batch_df[[c for c in show_cols if c in batch_df.columns]], width="stretch", hide_index=True)
+
+            def batch_label(item):
+                name = item.get("file_name") or item.get("broker") or "batch"
+                return f"{item['batch_id']} | {name} | trades: {item.get('trade_count', 0)} | P&L: {money(item.get('pnl', 0))}"
+
+            selected_batch = st.selectbox(
+                "Select batch to delete",
+                options=batches,
+                format_func=batch_label,
+                key="delete_batch_select",
+            )
+            confirm_delete = st.checkbox(
+                "I understand this will delete all trades from the selected batch and clear its import history.",
+                key="confirm_delete_batch",
+            )
+            if st.button("Delete selected batch", type="primary", disabled=not confirm_delete):
+                result = delete_import_batch(user_id, portfolio_id, selected_batch["batch_id"])
+                st.success(
+                    f"Deleted batch {selected_batch['batch_id']}: "
+                    f"{result['trades_deleted']} trades removed, "
+                    f"{result['file_records_deleted']} import-history record(s) removed."
+                )
+                st.rerun()
 
     elif page == "Dropbox":
         render_dropbox_import_page(user_id, portfolio_id)
