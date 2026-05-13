@@ -288,7 +288,154 @@ def derive_buy_sell_prices(trade):
     return 0.0, 0.0
 
 
+def parse_money_value(value):
+    text = str(value or "").strip()
+    if text == "":
+        return 0.0
+    negative = text.startswith("(") or "$(" in text or text.startswith("-")
+    text = text.replace("$", "").replace(",", "").replace("(", "").replace(")", "").strip()
+    try:
+        number = float(text)
+    except ValueError:
+        return 0.0
+    return -abs(number) if negative else number
+
+
+def parse_dt_streamlit(raw):
+    raw = str(raw or "").strip()
+    if not raw:
+        return None
+    for fmt in (
+        "%m/%d/%Y %H:%M:%S",
+        "%m/%d/%Y %H:%M",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%d",
+        "%m/%d/%Y",
+    ):
+        try:
+            return datetime.strptime(raw, fmt)
+        except ValueError:
+            continue
+    try:
+        return pd.to_datetime(raw, errors="coerce").to_pydatetime()
+    except Exception:
+        return None
+
+
+def is_ninjatrader_performance_csv(path):
+    try:
+        with open(path, "r", encoding="utf-8-sig", errors="replace") as f:
+            header = f.readline().strip().lower()
+        required = ["symbol", "buyprice", "sellprice", "pnl", "boughttimestamp", "soldtimestamp"]
+        compact = header.replace("_", "").replace(" ", "")
+        return all(item in compact for item in required)
+    except Exception:
+        return False
+
+
+def parse_ninjatrader_performance_csv(path):
+    """Parse NinjaTrader Performance CSV closed trades.
+
+    Supports headers like:
+    symbol, buyFillId, sellFillId, qty, buyPrice, sellPrice, pnl,
+    boughtTimestamp, soldTimestamp, duration
+
+    Trade date is the entry timestamp: buy time for long trades, sell time for short trades.
+    This keeps the calendar aligned with when the trade was opened.
+    """
+    df = pd.read_csv(path, encoding="utf-8-sig")
+    normalized = {str(c).strip().lower().replace("_", "").replace(" ", ""): c for c in df.columns}
+
+    def get_col(*names):
+        for name in names:
+            key = name.lower().replace("_", "").replace(" ", "")
+            if key in normalized:
+                return normalized[key]
+        return None
+
+    symbol_col = get_col("symbol")
+    qty_col = get_col("qty", "quantity")
+    buy_price_col = get_col("buyPrice", "buy price")
+    sell_price_col = get_col("sellPrice", "sell price")
+    pnl_col = get_col("pnl", "P&L", "profit")
+    bought_col = get_col("boughtTimestamp", "bought timestamp", "buyTime", "buy time")
+    sold_col = get_col("soldTimestamp", "sold timestamp", "sellTime", "sell time")
+    buy_id_col = get_col("buyFillId", "buy fill id")
+    sell_id_col = get_col("sellFillId", "sell fill id")
+    duration_col = get_col("duration")
+
+    missing = [name for name, col in {
+        "symbol": symbol_col,
+        "qty": qty_col,
+        "buyPrice": buy_price_col,
+        "sellPrice": sell_price_col,
+        "pnl": pnl_col,
+        "boughtTimestamp": bought_col,
+        "soldTimestamp": sold_col,
+    }.items() if col is None]
+    if missing:
+        raise ValueError(f"NinjaTrader CSV missing required columns: {', '.join(missing)}")
+
+    trades = []
+    for _, row in df.iterrows():
+        symbol = str(row.get(symbol_col, "") or "").strip()
+        if not symbol:
+            continue
+
+        qty = abs(parse_money_value(row.get(qty_col, 0)))
+        buy_price = parse_money_value(row.get(buy_price_col, 0))
+        sell_price = parse_money_value(row.get(sell_price_col, 0))
+        realized_pl = parse_money_value(row.get(pnl_col, 0))
+        bought_dt = parse_dt_streamlit(row.get(bought_col, ""))
+        sold_dt = parse_dt_streamlit(row.get(sold_col, ""))
+
+        is_long = True
+        if bought_dt and sold_dt:
+            is_long = bought_dt <= sold_dt
+
+        entry_dt = bought_dt if is_long else sold_dt
+        exit_dt = sold_dt if is_long else bought_dt
+        trade_dt = entry_dt or exit_dt
+        side = "BUY" if is_long else "SELL"
+        signed_qty = qty if is_long else -qty
+        entry_price = buy_price if is_long else sell_price
+        close_price = sell_price if is_long else buy_price
+        buy_id = str(row.get(buy_id_col, "") if buy_id_col else "").strip()
+        sell_id = str(row.get(sell_id_col, "") if sell_id_col else "").strip()
+        duration = str(row.get(duration_col, "") if duration_col else "").strip()
+
+        trades.append({
+            "broker": "NinjaTrader Performance",
+            "asset_category": "FUT",
+            "currency": "USD",
+            "symbol": symbol,
+            "trade_datetime": trade_dt.isoformat() if trade_dt else None,
+            "quantity": signed_qty,
+            "side": side,
+            "trade_price": entry_price,
+            "close_price": close_price,
+            "buy_price": buy_price,
+            "sell_price": sell_price,
+            "proceeds": realized_pl,
+            "commission": 0.0,
+            "basis": 0.0,
+            "realized_pl": realized_pl,
+            "mtm_pl": 0.0,
+            "code": f"NINJATRADER:{buy_id}:{sell_id}",
+            "notes": f"Entry: {entry_dt}; Exit: {exit_dt}; Duration: {duration}",
+            "risk_amount": 0.0,
+            "r_multiple": 0.0,
+        })
+    return trades
+
+
 def parse_uploaded_file(path):
+    # Handle NinjaTrader Performance CSV directly here so this exact export format
+    # imports reliably and shows every closed trade on the calendar/details table.
+    if is_ninjatrader_performance_csv(path):
+        return "performance", parse_ninjatrader_performance_csv(path)
+
     import_type = legacy.detect_import_type(str(path))
     if import_type in {"ibkr", "ibkr_trades"}:
         return import_type, legacy.parse_ibkr_activity_csv(str(path))
@@ -297,7 +444,7 @@ def parse_uploaded_file(path):
     if import_type == "wealthsimple":
         return import_type, legacy.parse_wealthsimple_csv(str(path))
     if import_type == "performance":
-        return import_type, legacy.parse_performance_csv(str(path))
+        return import_type, parse_ninjatrader_performance_csv(path)
     raise ValueError(f"Unsupported or unrecognized CSV format: {import_type}")
 
 
