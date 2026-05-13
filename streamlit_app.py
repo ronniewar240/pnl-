@@ -74,6 +74,8 @@ html, body, [data-testid="stAppViewContainer"] {
 .pos { color:var(--green)!important; } .neg { color:var(--red)!important; } .yellow { color:var(--yellow)!important; }
 .calendar-cell { border:1px solid var(--border); border-radius:12px; padding:8px; min-height:78px; overflow:hidden; background:#111720; }
 .calendar-day { font-weight:700; color:var(--text); } .calendar-pnl { font-weight:700; font-size:13px; } .small-platform { font-size:10px; line-height:1.15; opacity:.9; }
+[data-testid="stExpander"] { background:var(--panel); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+[data-testid="stExpander"] summary { color:var(--text)!important; font-weight:700; }
 [data-testid="stDataFrame"] { padding:0!important; overflow:hidden; }
 .stButton > button, .stDownloadButton > button { border-radius:10px!important; border:1px solid #374151!important; background:#f3f4f6!important; color:#111827!important; font-weight:650!important; min-height:38px; box-shadow:none!important; }
 .stButton > button:hover, .stDownloadButton > button:hover { background:#ffffff!important; border-color:#ffffff!important; }
@@ -718,6 +720,39 @@ def render_monthly_calendar(df):
                 """,
                 unsafe_allow_html=True,
             )
+
+    st.markdown("---")
+    section_heading("Daily Trade Details", "Expand a date to see every trade included in that calendar day.")
+
+    details = month_df.copy()
+    details["day"] = details["date"].dt.date
+    details = details.sort_values(["day", "broker", "symbol", "trade_datetime" if "trade_datetime" in details.columns else "date"])
+
+    wanted_cols = [
+        "broker", "symbol", "side", "quantity", "buy_price", "sell_price",
+        "realized_pl", "commission", "setup_tag", "notes"
+    ]
+    visible_cols = [c for c in wanted_cols if c in details.columns]
+
+    for day, day_df in details.groupby("day", sort=True):
+        day_pnl = float(day_df["realized_pl"].sum()) if "realized_pl" in day_df else 0.0
+        title = f"{day.strftime('%b %d, %Y')} — {len(day_df)} trade(s) — {money(day_pnl)}"
+        with st.expander(title, expanded=False):
+            display = day_df[visible_cols].copy()
+            rename_map = {
+                "broker": "Platform",
+                "symbol": "Symbol",
+                "side": "Side",
+                "quantity": "Qty",
+                "buy_price": "Buy",
+                "sell_price": "Sell",
+                "realized_pl": "P&L",
+                "commission": "Fees",
+                "setup_tag": "Setup",
+                "notes": "Notes",
+            }
+            display = display.rename(columns={k: v for k, v in rename_map.items() if k in display.columns})
+            st.dataframe(display, width="stretch", hide_index=True)
 
 
 def main():
