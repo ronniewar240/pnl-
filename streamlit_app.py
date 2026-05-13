@@ -288,6 +288,118 @@ def derive_buy_sell_prices(trade):
     return 0.0, 0.0
 
 
+def load_existing_wealthsimple_trades(user_id, portfolio_id):
+    conn = connect()
+    rows = conn.execute("""
+        SELECT * FROM trades
+        WHERE user_id = ? AND portfolio_id = ? AND LOWER(broker) LIKE '%wealthsimple%'
+        ORDER BY COALESCE(trade_datetime, ''), id
+    """, (user_id, portfolio_id)).fetchall()
+    conn.close()
+    existing = []
+    for r in rows:
+        d = dict(r)
+        d["db_id"] = d.get("id")
+        d["is_new"] = False
+        existing.append(d)
+    return existing
+
+
+def recompute_wealthsimple_fifo_for_streamlit(existing_trades, new_trades):
+    """Compute Wealthsimple realized P&L from buys/sells using FIFO.
+
+    Wealthsimple activity CSVs often do not include a realized P&L column.
+    This fills realized_pl on SELL rows, sets basis, and keeps BUY rows at 0 P&L.
+    Existing Wealthsimple rows are included so re-importing later sells can match
+    older buy lots already in the database.
+    """
+    combined = []
+    for t in existing_trades:
+        item = dict(t)
+        item["is_new"] = False
+        combined.append(item)
+    for t in new_trades:
+        item = dict(t)
+        item["is_new"] = True
+        item["db_id"] = None
+        combined.append(item)
+
+    groups = {}
+    for t in combined:
+        key = (str(t.get("symbol") or "").upper().strip(), str(t.get("currency") or "CAD").upper().strip())
+        groups.setdefault(key, []).append(t)
+
+    updates = []
+    for _, items in groups.items():
+        items.sort(key=lambda x: (str(x.get("trade_datetime") or ""), 0 if to_float(x.get("quantity")) > 0 else 1, int(x.get("db_id") or 0)))
+        lots = []
+
+        for trade in items:
+            qty = to_float(trade.get("quantity"))
+            price = to_float(trade.get("trade_price"))
+            commission = to_float(trade.get("commission"))
+
+            if qty > 0:
+                total_cost = qty * price + commission
+                unit_cost = total_cost / qty if qty else 0.0
+                lots.append({"qty_remaining": qty, "unit_cost": unit_cost})
+                trade["basis"] = round(total_cost, 2)
+                trade["realized_pl"] = 0.0
+
+            elif qty < 0:
+                sell_qty = abs(qty)
+                gross_sale = sell_qty * price
+                net_sale = gross_sale - commission
+                remaining = sell_qty
+                total_basis = 0.0
+
+                while remaining > 1e-12 and lots:
+                    lot = lots[0]
+                    matched = min(remaining, lot["qty_remaining"])
+                    total_basis += matched * lot["unit_cost"]
+                    lot["qty_remaining"] -= matched
+                    remaining -= matched
+                    if lot["qty_remaining"] <= 1e-12:
+                        lots.pop(0)
+
+                trade["basis"] = round(total_basis, 2)
+                trade["realized_pl"] = round(net_sale - total_basis, 2)
+
+            trade["mtm_pl"] = trade.get("realized_pl", 0.0)
+
+            if not trade.get("is_new") and trade.get("db_id"):
+                updates.append({
+                    "db_id": trade["db_id"],
+                    "basis": to_float(trade.get("basis")),
+                    "realized_pl": to_float(trade.get("realized_pl")),
+                    "mtm_pl": to_float(trade.get("mtm_pl")),
+                })
+
+    return updates, [t for t in combined if t.get("is_new")]
+
+
+def update_existing_wealthsimple_fifo_values(updates):
+    if not updates:
+        return
+    conn = connect()
+    for u in updates:
+        conn.execute(
+            "UPDATE trades SET basis = ?, realized_pl = ?, mtm_pl = ? WHERE id = ?",
+            (u["basis"], u["realized_pl"], u["mtm_pl"], u["db_id"]),
+        )
+    conn.commit()
+    conn.close()
+
+
+def prepare_trades_for_import(user_id, portfolio_id, import_type, trades):
+    if import_type == "wealthsimple":
+        existing = load_existing_wealthsimple_trades(user_id, portfolio_id)
+        updates, prepared = recompute_wealthsimple_fifo_for_streamlit(existing, trades)
+        update_existing_wealthsimple_fifo_values(updates)
+        return prepared
+    return trades
+
+
 def parse_money_value(value):
     text = str(value or "").strip()
     if text == "":
@@ -686,6 +798,7 @@ def import_one_csv_path(user_id, portfolio_id, path, source, file_hash_value=Non
         }
 
     import_type, trades = parse_uploaded_file(path)
+    trades = prepare_trades_for_import(user_id, portfolio_id, import_type, trades)
     batch_id = f"{source.upper()}_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
     inserted, skipped = insert_trades(user_id, portfolio_id, trades, path.name, batch_id)
     record_imported_source_file(
@@ -1017,6 +1130,7 @@ def main():
                         continue
                     try:
                         import_type, trades = parse_uploaded_file(path)
+                        trades = prepare_trades_for_import(user_id, portfolio_id, import_type, trades)
                         batch_id = f"ST_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
                         inserted, skipped = insert_trades(user_id, portfolio_id, trades, f.name, batch_id)
                         conn = connect()
